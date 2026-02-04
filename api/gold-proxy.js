@@ -31,8 +31,16 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'No valid API keys found' });
     }
 
-    // Extract query parameters
-    const { symbol, startTimestamp, endTimestamp, groupBy } = req.query;
+    // Extract query parameters and path
+    let { symbol, startTimestamp, endTimestamp, groupBy } = req.query;
+    
+    // Check if symbol is in the URL path (for /api/gold/price/XAU)
+    if (!symbol && req.url) {
+      const pathMatch = req.url.match(/\/price\/([A-Z]+)/);
+      if (pathMatch) {
+        symbol = pathMatch[1];
+      }
+    }
 
     // Determine endpoint type based on parameters
     let goldApiUrl;
@@ -43,7 +51,7 @@ export default async function handler(req, res) {
       // Current price endpoint
       goldApiUrl = `https://api.gold-api.com/price/${symbol}`;
     } else {
-      return res.status(400).json({ error: 'Invalid parameters' });
+      return res.status(400).json({ error: 'Invalid parameters - symbol is required' });
     }
 
     // Try each API key until one succeeds

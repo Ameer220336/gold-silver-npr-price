@@ -5,7 +5,7 @@
       "destination": "/api/gold-proxy"
     },
     {
-      "source": "/api/gold/price",
+      "source": "/api/gold/price/:symbol",
       "destination": "/api/gold-proxy"
     }
   ]
