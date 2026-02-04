@@ -542,19 +542,19 @@ function App() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-900 text-gray-100 p-4 md:p-8">
+        <div className="min-h-screen bg-gray-900 text-gray-100 p-2 sm:p-4">
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
-                <div className="mb-8">
+                <div className="mb-4 sm:mb-6">
                     <div className="flex items-center justify-between flex-wrap gap-4">
                         <div className="flex items-center gap-3">
-                            <img src="/assets/favicon.png" alt="Gold and Silver Price in nepal" className="w-10 h-10" />
-                            <h1 className="text-3xl font-bold text-white">
+                            <img src="/assets/logo.png" alt="Gold and Silver Price in nepal" className="w-16 h-16 sm:w-20 sm:h-20 object-contain" />
+                            <h1 className="text-base sm:text-xl md:text-2xl lg:text-3xl font-bold text-white">
                                Bajracharya Jyaasa - Gold and Silver Prices In Nepal
                             </h1>
                         </div>
 
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto justify-end">
                             {/* Unit Toggle */}
                             <div className="flex items-center gap-2 bg-gray-800 rounded-lg p-1">
                                 <button
@@ -594,50 +594,62 @@ function App() {
                             </button>
                         </div>
                     </div>
-                    <p className="text-gray-400 text-sm mt-1">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 mt-3 text-xs sm:text-sm">
+                        {/* Last Updated Info */}
+                        {lastUpdated && (
+                            <div className="flex flex-wrap items-center gap-2">
+                                <div className="flex items-center gap-2 bg-gray-800 px-3 py-1.5 rounded-md">
+                                    <span className="text-gray-500">Updated:</span>
+                                    <span className="text-yellow-400 font-semibold">
+                                        {formatNepaliDateDisplay(lastUpdated.toISOString().split("T")[0])}
+                                    </span>
+                                    <span className="text-gray-400">•</span>
+                                    <span className="text-yellow-400 font-semibold">
+                                        {lastUpdated.toLocaleTimeString("en-NP", {
+                                            hour: "2-digit",
+                                            minute: "2-digit",
+                                        })}
+                                    </span>
+                                </div>
+                                <div className="text-gray-500 text-xs">
+                                    ({lastUpdated.toLocaleDateString("en-US", { 
+                                        month: "short", 
+                                        day: "numeric", 
+                                        year: "numeric" 
+                                    })})
+                                </div>
+                                <div className="flex items-center gap-1 text-green-400 text-xs">
+                                    <RefreshCw className="w-3 h-3 animate-pulse" />
+                                    <span className="font-semibold">Auto-refresh: 30 min</span>
+                                </div>
+                            </div>
+                        )}
+                        
+                        {/* Exchange Rate */}
+                        {usdToNpr && (
+                            <div className="flex items-center gap-2 bg-gray-800 px-3 py-1.5 rounded-md">
+                                <span className="text-gray-500 text-xs sm:text-sm">Exchange Rate:</span>
+                                <span className="text-yellow-400 font-bold text-sm sm:text-base">
+                                    1 USD = RS {usdToNpr.toFixed(2)}
+                                </span>
+                            </div>
+                        )}
+                    </div>
+                    <p className="text-gray-400 text-xs sm:text-sm mt-2">
                         {disclaimer}
                     </p>
-                    {/* Last Updated */}
-                    {lastUpdated && (
-                        <p className="text-gray-400 text-sm mt-2">
-                            Last updated:{" "}
-                            {formatNepaliDateDisplay(
-                                lastUpdated.toISOString().split("T")[0]
-                            )}{" "}
-                            {lastUpdated.toLocaleTimeString("en-NP", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                            })} {" "}
-                            ( {lastUpdated.toLocaleString("en-US", {
-                                dateStyle: "medium",
-                                timeStyle: "short",
-                            })} ) {" - Updates every 30 minutes"}
-                        </p>
-                    )}
                 </div>
-
-                {/* Exchange Rate */}
-                {usdToNpr && (
-                    <div className="mb-6 bg-gray-800 rounded-lg p-4 shadow-lg">
-                        <div className="flex items-center justify-center gap-3">
-                            <span className="text-gray-400 text-sm">Exchange Rate:</span>
-                            <span className="text-yellow-400 font-bold text-lg">
-                                1 USD = RS {usdToNpr.toFixed(2)} 
-                            </span>
-                        </div>
-                    </div>
-                )}
 
                 {/* Error State */}
                 {error && (
-                    <div className="bg-red-900/50 border border-red-500 text-red-200 px-4 py-3 rounded-lg mb-6">
+                    <div className="bg-red-900/50 border border-red-500 text-red-200 px-4 py-3 rounded-lg mb-4">
                         <p className="font-semibold">Error loading data</p>
                         <p className="text-sm">{error}</p>
                     </div>
                 )}
 
                 {/* Gold and Silver Charts Side by Side */}
-                <div className="flex flex-col lg:flex-row gap-6 mb-6">
+                <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 mb-6">
                     {renderMetalCard(goldData, 'XAU', loadingGold)}
                     {renderMetalCard(silverData, 'XAG', loadingSilver)}
                 </div>
