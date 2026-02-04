@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import Highcharts from "highcharts";
 import HighchartsReact from "highcharts-react-official";
 import { RefreshCw, TrendingUp, Table, LineChart, Coins } from "lucide-react";
+import NepaliDate from "nepali-date-converter";
 
 // Constants
 // const OZ_TO_GM = 28.3495;
@@ -48,21 +49,51 @@ const get30DaysAgoTimestamp = () => {
 
 const getTodayTimestamp = () => Math.floor(Date.now() / 1000);
 
-const formatNPR = (value) => {
-    return new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "NPR",
+const formatRS = (value) => {
+    return 'RS ' + new Intl.NumberFormat("en-NP", {
         minimumFractionDigits: 0,
         maximumFractionDigits: 0,
     }).format(value);
 };
 
+// Convert AD date string (YYYY-MM-DD) to BS format
+const convertToNepaliDate = (adDateString) => {
+    try {
+        const [year, month, day] = adDateString.split('-').map(Number);
+        const nepaliDate = new NepaliDate(new Date(year, month - 1, day));
+        return nepaliDate.format('YYYY-MM-DD', 'np'); // BS format
+    } catch (error) {
+        console.error('Error converting to Nepali date:', error);
+        return adDateString; // Fallback to AD date
+    }
+};
+
+// Format Nepali date for display (YYYY Magh DD)
+const formatNepaliDateDisplay = (adDateString) => {
+    try {
+        const [year, month, day] = adDateString.split('-').map(Number);
+        const nepaliDate = new NepaliDate(new Date(year, month - 1, day));
+        const nepaliMonths = ['Baisakh', 'Jestha', 'Ashadh', 'Shrawan', 'Bhadra', 'Ashwin', 'Kartik', 'Mangsir', 'Poush', 'Magh', 'Falgun', 'Chaitra'];
+        const bsYear = nepaliDate.getYear();
+        const bsMonth = nepaliDate.getMonth();
+        const bsDay = nepaliDate.getDate();
+        return `${bsYear} ${nepaliMonths[bsMonth]} ${bsDay}`;
+    } catch (error) {
+        console.error('Error formatting Nepali date:', error);
+        return adDateString;
+    }
+};
+
 // Calculate price per tola with margin
 const calculatePricePerTola = (maxPriceUSD, usdToNprRate) => {
+    return Math.round(calculatePricePerGram(maxPriceUSD, usdToNprRate) * GM_TO_TOLA); 
+};
+
+// Calculate price per gram with margin
+const calculatePricePerGram = (maxPriceUSD, usdToNprRate) => {
     const pricePerGmUSD = maxPriceUSD / OZ_TO_GM;
     const pricePerGmNPR = pricePerGmUSD * usdToNprRate;
-    const pricePerTolaNPR = pricePerGmNPR * GM_TO_TOLA;
-    return Math.round(pricePerTolaNPR * 1.105); // 10.5% margin
+    return Math.round(pricePerGmNPR * 1.105); // 10.5% margin
 };
 
 function App() {
@@ -73,7 +104,7 @@ function App() {
     const [lastUpdated, setLastUpdated] = useState(null);
     const [error, setError] = useState(null);
     const [usdToNpr, setUsdToNpr] = useState(null);
-    const [viewMode, setViewMode] = useState('chart'); // 'chart' or 'table'
+    const [viewMode, setViewMode] = useState('tola'); // 'tola' or 'gms'
 
     // Fetch and process metal price data
     const fetchMetalData = useCallback(async (metal, forceRefresh = false) => {
@@ -87,14 +118,28 @@ function App() {
             // Check cache first if not forcing refresh
             if (!forceRefresh) {
                 const cachedData = getCachedData(metal);
-                if (cachedData) {
-                    setData(cachedData.chartData);
-                    if (metal === 'XAU') {
-                        setUsdToNpr(cachedData.usdToNpr);
-                        setLastUpdated(new Date(cachedData.lastUpdated));
+                if (cachedData && cachedData.chartData) {
+                    // Validate that cached data has all required fields
+                    const hasValidData = cachedData.chartData.every(item => 
+                        item.price_per_tola !== undefined && 
+                        item.price_per_gram !== undefined &&
+                        !isNaN(item.price_per_gram) &&
+                        item.price_per_gram > 0
+                    );
+                    
+                    if (hasValidData) {
+                        setData(cachedData.chartData);
+                        if (metal === 'XAU') {
+                            setUsdToNpr(cachedData.usdToNpr);
+                            setLastUpdated(new Date(cachedData.lastUpdated));
+                        }
+                        setLoading(false);
+                        return;
+                    } else {
+                        // Invalid cache, clear it
+                        localStorage.removeItem(`priceData_${metal}`);
+                        console.log(`Cleared invalid cache for ${metal}`);
                     }
-                    setLoading(false);
-                    return;
                 }
             }
 
@@ -123,26 +168,36 @@ function App() {
                 setUsdToNpr(USD_TO_NPR);
             }
 
-            // Process and calculate NPR per Tola
+            // Process and calculate NPR per Tola and Gram
             const processedData = metalPriceData
                 .map((item) => {
                     const maxPrice = parseFloat(item.max_price);
+                    const pricePerTola = calculatePricePerTola(maxPrice, USD_TO_NPR);
+                    const pricePerGram = calculatePricePerGram(maxPrice, USD_TO_NPR);
+                    
                     return {
                         day: item.day.split(" ")[0], // Extract date (YYYY-MM-DD)
                         price_usd: maxPrice,
-                        price_per_tola: calculatePricePerTola(maxPrice, USD_TO_NPR),
+                        price_per_tola: pricePerTola,
+                        price_per_gram: pricePerGram,
                     };
                 })
-                .filter(item => !isNaN(item.price_per_tola) && item.price_per_tola > 0)
+                .filter(item => 
+                    !isNaN(item.price_usd) && item.price_usd > 0 &&
+                    !isNaN(item.price_per_tola) && item.price_per_tola > 0 &&
+                    !isNaN(item.price_per_gram) && item.price_per_gram > 0
+                )
                 .sort((a, b) => new Date(a.day) - new Date(b.day));
 
-            // Calculate percentage change after sorting
+            // Calculate percentage change after sorting (based on tola - same % for both units)
             const dataWithPercentChange = processedData.map((item, index) => {
                 let percentChange = 0;
-                if (index > 0 && processedData[index - 1].price_per_tola > 0) {
+                if (index > 0) {
                     const prevPrice = processedData[index - 1].price_per_tola;
                     const currentPrice = item.price_per_tola;
-                    percentChange = ((currentPrice - prevPrice) / prevPrice) * 100;
+                    if (prevPrice > 0 && !isNaN(prevPrice) && !isNaN(currentPrice)) {
+                        percentChange = ((currentPrice - prevPrice) / prevPrice) * 100;
+                    }
                 }
                 return {
                     ...item,
@@ -151,6 +206,23 @@ function App() {
             });
 
             const now = new Date();
+            
+            // Validate data before setting state
+            if (dataWithPercentChange.length === 0) {
+                throw new Error(`No valid ${metal} price data after processing`);
+            }
+            
+            // Log sample data for debugging (only in development)
+            if (process.env.NODE_ENV !== 'production' && dataWithPercentChange.length > 0) {
+                const lastItem = dataWithPercentChange[dataWithPercentChange.length - 1];
+                console.log(`${metal} Latest:`, {
+                    date: lastItem.day,
+                    usd: lastItem.price_usd,
+                    tola: lastItem.price_per_tola,
+                    gram: lastItem.price_per_gram,
+                    change: lastItem.percentChange
+                });
+            }
             
             setData(dataWithPercentChange);
             if (metal === 'XAU') {
@@ -197,7 +269,7 @@ function App() {
             height: 300,
         },
         title: {
-            text: `${metal === 'XAU' ? 'Gold' : 'Silver'} Price per Tola (NPR)`,
+            text: `${metal === 'XAU' ? 'Gold' : 'Silver'} Price per ${viewMode === 'tola' ? 'Tola' : 'Gram'} (RS)`,
             style: {
                 color: "#f9fafb",
                 fontSize: "18px",
@@ -212,7 +284,7 @@ function App() {
             },
         },
         xAxis: {
-            categories: chartData.map((item) => item.day),
+            categories: chartData.map((item) => formatNepaliDateDisplay(item.day)),
             labels: {
                 style: {
                     color: "#9ca3af",
@@ -224,7 +296,7 @@ function App() {
         },
         yAxis: {
             title: {
-                text: "Price (NPR)",
+                text: "Price (RS)",
                 style: {
                     color: "#9ca3af",
                 },
@@ -235,7 +307,7 @@ function App() {
                     fontSize: "10px",
                 },
                 formatter: function () {
-                    return formatNPR(this.value);
+                    return formatRS(this.value);
                 },
             },
             gridLineColor: "#374151",
@@ -249,7 +321,7 @@ function App() {
             formatter: function () {
                 const dataIndex = this.point.index;
                 const dataPoint = chartData[dataIndex];
-                return `<b>${this.x}</b><br/>Price: ${formatNPR(this.y)}<br/>USD/oz: $${dataPoint?.price_usd?.toFixed(2)}`;
+                return `<b>${this.x}</b><br/>Price: ${formatRS(this.y)}<br/>USD/oz: $${dataPoint?.price_usd?.toFixed(2)}`;
             },
         },
         plotOptions: {
@@ -264,7 +336,7 @@ function App() {
         series: [
             {
                 name: `${metal === 'XAU' ? 'Gold' : 'Silver'} Price`,
-                data: chartData.map((item) => item.price_per_tola),
+                data: chartData.map((item) => viewMode === 'tola' ? item.price_per_tola : item.price_per_gram),
                 color: metal === 'XAU' ? "#fbbf24" : "#cbd5e1",
                 marker: {
                     fillColor: metal === 'XAU' ? "#fbbf24" : "#cbd5e1",
@@ -291,13 +363,16 @@ function App() {
                 {chartData.length > 0 && (
                     <div className={`mb-4 bg-gradient-to-br ${isGold ? 'from-yellow-600 to-yellow-500' : 'from-gray-600 to-gray-500'} rounded-lg p-4 shadow-xl`}>
                         <div className="flex items-center justify-between">
-                            <div>
+                            <div className="flex-1">
                                 <p className={`${isGold ? 'text-yellow-100' : 'text-gray-100'} text-xs mb-1`}>
+                                    USD/oz: ${chartData[chartData.length - 1].price_usd.toFixed(2)}
+                                </p>
+                                <p className={`${isGold ? 'text-yellow-100' : 'text-gray-100'} text-xs mb-2`}>
                                     Current {metalName} Price
                                 </p>
                                 <div className="flex items-baseline gap-2">
                                     <p className="text-white text-2xl md:text-3xl font-bold">
-                                        {formatNPR(chartData[chartData.length - 1].price_per_tola)}
+                                        {formatRS(viewMode === 'tola' ? chartData[chartData.length - 1].price_per_tola : chartData[chartData.length - 1].price_per_gram)}
                                     </p>
                                     {chartData[chartData.length - 1].percentChange !== 0 && (
                                         <span className={`text-sm font-semibold ${
@@ -311,7 +386,7 @@ function App() {
                                     )}
                                 </div>
                                 <p className={`${isGold ? 'text-yellow-100' : 'text-gray-100'} text-xs mt-1`}>
-                                    per Tola (with 10.5% margin)
+                                    per {viewMode === 'tola' ? 'Tola' : 'Gram'}
                                 </p>
                             </div>
                             <Coins className={`w-12 h-12 ${isGold ? 'text-yellow-200' : 'text-gray-200'} opacity-50`} />
@@ -328,16 +403,25 @@ function App() {
                         </div>
                     </div>
                 ) : (
-                    /* Chart or Table View */
-                    <div className="bg-gray-800 rounded-lg p-4 shadow-xl">
-                        {chartData.length > 0 ? (
-                            viewMode === 'chart' ? (
+                    /* Chart and Table View */
+                    <>
+                        {/* Chart */}
+                        <div className="bg-gray-800 rounded-lg p-4 shadow-xl mb-4">
+                            {chartData.length > 0 ? (
                                 <HighchartsReact
                                     highcharts={Highcharts}
                                     options={createChartOptions(chartData, metal)}
                                 />
                             ) : (
-                                /* Data Table */
+                                <div className="text-center py-8 text-gray-400 text-sm">
+                                    No data available
+                                </div>
+                            )}
+                        </div>
+                        
+                        {/* Data Table */}
+                        {chartData.length > 0 && (
+                            <div className="bg-gray-800 rounded-lg p-4 shadow-xl">
                                 <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
                                     <table className="w-full text-left text-sm">
                                         <thead className="sticky top-0 bg-gray-800">
@@ -345,7 +429,7 @@ function App() {
                                                 <th className="px-2 py-2 text-gray-300 font-semibold text-xs">#</th>
                                                 <th className="px-2 py-2 text-gray-300 font-semibold text-xs">Date</th>
                                                 <th className="px-2 py-2 text-gray-300 font-semibold text-right text-xs">USD/oz</th>
-                                                <th className="px-2 py-2 text-gray-300 font-semibold text-right text-xs">NPR/Tola</th>
+                                                <th className="px-2 py-2 text-gray-300 font-semibold text-right text-xs">RS/{viewMode === 'tola' ? 'Tola' : 'Gram'}</th>
                                                 <th className="px-2 py-2 text-gray-300 font-semibold text-right text-xs">Change %</th>
                                             </tr>
                                         </thead>
@@ -356,12 +440,12 @@ function App() {
                                                     className="border-b border-gray-700/50 hover:bg-gray-700/30 transition-colors"
                                                 >
                                                     <td className="px-2 py-2 text-gray-400 text-xs">{index + 1}</td>
-                                                    <td className="px-2 py-2 text-gray-100 text-xs">{item.day}</td>
+                                                    <td className="px-2 py-2 text-gray-100 text-xs">{formatNepaliDateDisplay(item.day)}</td>
                                                     <td className="px-2 py-2 text-right text-gray-100 text-xs">
                                                         ${item.price_usd.toFixed(2)}
                                                     </td>
                                                     <td className={`px-2 py-2 text-right font-semibold text-xs ${isGold ? 'text-yellow-400' : 'text-gray-400'}`}>
-                                                        {formatNPR(item.price_per_tola)}
+                                                        {formatRS(viewMode === 'tola' ? item.price_per_tola : item.price_per_gram)}
                                                     </td>
                                                     <td className={`px-2 py-2 text-right font-semibold text-xs ${
                                                         !item.percentChange || isNaN(item.percentChange) || item.percentChange === 0 ? 'text-gray-500' :
@@ -379,13 +463,9 @@ function App() {
                                         </tbody>
                                     </table>
                                 </div>
-                            )
-                        ) : (
-                            <div className="text-center py-8 text-gray-400 text-sm">
-                                No data available
                             </div>
                         )}
-                    </div>
+                    </>
                 )}
             </div>
         );
@@ -399,7 +479,7 @@ function App() {
                     <div className="flex items-center justify-between flex-wrap gap-4">
                         <div className="flex items-center gap-3">
                             <TrendingUp className="w-8 h-8 text-yellow-400" />
-                            <h1 className="text-3xl md:text-4xl font-bold text-white">
+                            <h1 className="text-3xl font-bold text-white">
                                Bajracharya Jyaasa - Live Commodity Prices
                             </h1>
                         </div>
@@ -409,33 +489,31 @@ function App() {
                             <div className="flex items-center gap-2 bg-gray-800 px-4 py-2 rounded-lg">
                                 <div className="w-3 h-3 bg-red-500 rounded-full pulse-red"></div>
                                 <span className="text-sm font-medium">
-                                    LIVE
+                                    Refreshes 30 mins
                                 </span>
                             </div>
 
-                            {/* View Toggle */}
+                            {/* Unit Toggle */}
                             <div className="flex items-center gap-2 bg-gray-800 rounded-lg p-1">
                                 <button
-                                    onClick={() => setViewMode('chart')}
+                                    onClick={() => setViewMode('tola')}
                                     className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors ${
-                                        viewMode === 'chart'
+                                        viewMode === 'tola'
                                             ? 'bg-yellow-500 text-gray-900'
                                             : 'text-gray-400 hover:text-gray-200'
                                     }`}
                                 >
-                                    <LineChart className="w-4 h-4" />
-                                    <span className="hidden sm:inline text-sm font-medium">Chart</span>
+                                    <span className="text-sm font-medium">TOLA</span>
                                 </button>
                                 <button
-                                    onClick={() => setViewMode('table')}
+                                    onClick={() => setViewMode('gms')}
                                     className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors ${
-                                        viewMode === 'table'
+                                        viewMode === 'gms'
                                             ? 'bg-yellow-500 text-gray-900'
                                             : 'text-gray-400 hover:text-gray-200'
                                     }`}
                                 >
-                                    <Table className="w-4 h-4" />
-                                    <span className="hidden sm:inline text-sm font-medium">Table</span>
+                                    <span className="text-sm font-medium">GRAM</span>
                                 </button>
                             </div>
 
@@ -454,20 +532,39 @@ function App() {
                             </button>
                         </div>
                     </div>
-                    <p className="text-gray-400 mt-1">
+                    <p className="text-gray-400 text-sm mt-1">
                         {disclaimer}
                     </p>
                     {/* Last Updated */}
                     {lastUpdated && (
                         <p className="text-gray-400 text-sm mt-2">
                             Last updated:{" "}
-                            {lastUpdated.toLocaleString("en-US", {
+                            {formatNepaliDateDisplay(
+                                lastUpdated.toISOString().split("T")[0]
+                            )}{" "}
+                            {lastUpdated.toLocaleTimeString("en-NP", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                            })} {" "}
+                            ( {lastUpdated.toLocaleString("en-US", {
                                 dateStyle: "medium",
                                 timeStyle: "short",
-                            })}
+                            })} )
                         </p>
                     )}
                 </div>
+
+                {/* Exchange Rate */}
+                {usdToNpr && (
+                    <div className="mb-6 bg-gray-800 rounded-lg p-4 shadow-lg">
+                        <div className="flex items-center justify-center gap-3">
+                            <span className="text-gray-400 text-sm">Exchange Rate:</span>
+                            <span className="text-yellow-400 font-bold text-lg">
+                                1 USD = RS {usdToNpr.toFixed(2)} 
+                            </span>
+                        </div>
+                    </div>
+                )}
 
                 {/* Error State */}
                 {error && (
@@ -483,18 +580,6 @@ function App() {
                     {renderMetalCard(silverData, 'XAG', loadingSilver)}
                 </div>
 
-                {/* Exchange Rate & Info Footer */}
-                {usdToNpr && (
-                    <div className="mt-6 bg-gray-800 rounded-lg p-4 shadow-lg">
-                        <div className="flex items-center justify-center gap-3">
-                            <span className="text-gray-400 text-sm">Exchange Rate:</span>
-                            <span className="text-yellow-400 font-bold text-lg">
-                                1 USD = {usdToNpr.toFixed(2)} NPR
-                            </span>
-                        </div>
-                    </div>
-                )}
-
                 {/* Info Footer */}
                 <div className="mt-8 text-center text-gray-500 text-sm">
                     <p>
@@ -508,7 +593,7 @@ function App() {
                     <p className="mt-1">
                         Methodology: 
                         1 Tola Price = ((Price USD/Ounce ÷ {OZ_TO_GM} grams) ×
-                        USD to NPR) × {GM_TO_TOLA} grams + (10% tax margin) + (0.5% bank margin)
+                        USD to RS) × {GM_TO_TOLA} grams + (10% tax margin) + (0.5% bank margin)
                     </p>
                     <p className="mt-1">
                         {disclaimer}
