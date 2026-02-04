@@ -82,6 +82,7 @@ function App() {
             const setData = metal === 'XAU' ? setGoldData : setSilverData;
             
             setLoading(true);
+            setError(null); // Clear any previous errors
             
             // Check cache first if not forcing refresh
             if (!forceRefresh) {
@@ -155,6 +156,7 @@ function App() {
             if (metal === 'XAU') {
                 setLastUpdated(now);
             }
+            setError(null); // Clear error on success
             setLoading(false);
             
             // Cache the data
