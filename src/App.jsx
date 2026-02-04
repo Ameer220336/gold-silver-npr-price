@@ -62,7 +62,7 @@ const calculatePricePerTola = (maxPriceUSD, usdToNprRate) => {
     const pricePerGmUSD = maxPriceUSD / OZ_TO_GM;
     const pricePerGmNPR = pricePerGmUSD * usdToNprRate;
     const pricePerTolaNPR = pricePerGmNPR * GM_TO_TOLA;
-    return Math.round(pricePerTolaNPR * 1.1); // 10% margin
+    return Math.round(pricePerTolaNPR * 1.105); // 10.5% margin
 };
 
 function App() {
@@ -311,7 +311,7 @@ function App() {
                                     )}
                                 </div>
                                 <p className={`${isGold ? 'text-yellow-100' : 'text-gray-100'} text-xs mt-1`}>
-                                    per Tola (with 10% margin)
+                                    per Tola (with 10.5% margin)
                                 </p>
                             </div>
                             <Coins className={`w-12 h-12 ${isGold ? 'text-yellow-200' : 'text-gray-200'} opacity-50`} />
@@ -498,8 +498,8 @@ function App() {
                 {/* Info Footer */}
                 <div className="mt-8 text-center text-gray-500 text-sm">
                     <p>
-                        Data updates every 30 minutes • Prices include 10%
-                        TAX margin
+                        Data updates every 30 minutes • Prices include 10.5%
+                        TAX margin + Bank Margin
                     </p>
                     <p className="mt-1">
                         1 Tola = {GM_TO_TOLA.toFixed(3)} grams • 1 Ounce ={" "}
@@ -508,7 +508,7 @@ function App() {
                     <p className="mt-1">
                         Methodology: 
                         1 Tola Price = ((Price USD/Ounce ÷ {OZ_TO_GM} grams) ×
-                        USD to NPR) × {GM_TO_TOLA} grams + (10% tax margin)
+                        USD to NPR) × {GM_TO_TOLA} grams + (10% tax margin) + (0.5% bank margin)
                     </p>
                     <p className="mt-1">
                         {disclaimer}
