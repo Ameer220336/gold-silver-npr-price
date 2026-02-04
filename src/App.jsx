@@ -548,21 +548,13 @@ function App() {
                 <div className="mb-8">
                     <div className="flex items-center justify-between flex-wrap gap-4">
                         <div className="flex items-center gap-3">
-                            <TrendingUp className="w-8 h-8 text-yellow-400" />
+                            <img src="/assets/favicon.png" alt="Gold and Silver Price in nepal" className="w-10 h-10" />
                             <h1 className="text-3xl font-bold text-white">
-                               Bajracharya Jyaasa - Live Commodity Prices
+                               Bajracharya Jyaasa - Gold and Silver Prices In Nepal
                             </h1>
                         </div>
 
                         <div className="flex items-center gap-4">
-                            {/* Live Indicator */}
-                            <div className="flex items-center gap-2 bg-gray-800 px-4 py-2 rounded-lg">
-                                <div className="w-3 h-3 bg-red-500 rounded-full pulse-red"></div>
-                                <span className="text-sm font-medium">
-                                    Every 30 mins
-                                </span>
-                            </div>
-
                             {/* Unit Toggle */}
                             <div className="flex items-center gap-2 bg-gray-800 rounded-lg p-1">
                                 <button
@@ -619,7 +611,7 @@ function App() {
                             ( {lastUpdated.toLocaleString("en-US", {
                                 dateStyle: "medium",
                                 timeStyle: "short",
-                            })} )
+                            })} ) {" - Updates every 30 minutes"}
                         </p>
                     )}
                 </div>
