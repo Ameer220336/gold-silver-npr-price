@@ -40,6 +40,35 @@ const setCachedData = (metal, data) => {
     }
 };
 
+// Exchange rate cache utilities
+const getCachedExchangeRate = () => {
+    try {
+        const cached = localStorage.getItem('exchangeRateData');
+        if (cached) {
+            const { rate, timeNextUpdateUnix } = JSON.parse(cached);
+            const now = Math.floor(Date.now() / 1000); // Current time in Unix seconds
+            if (now < timeNextUpdateUnix) {
+                return { rate, timeNextUpdateUnix };
+            }
+        }
+    } catch (error) {
+        console.error('Error reading exchange rate cache:', error);
+    }
+    return null;
+};
+
+const setCachedExchangeRate = (rate, timeNextUpdateUnix) => {
+    try {
+        localStorage.setItem('exchangeRateData', JSON.stringify({
+            rate,
+            timeNextUpdateUnix,
+            timestamp: Date.now(),
+        }));
+    } catch (error) {
+        console.error('Error writing exchange rate cache:', error);
+    }
+};
+
 // Utility functions
 const get30DaysAgoTimestamp = () => {
     const date = new Date();
@@ -153,26 +182,45 @@ function App() {
                 }
             }
 
-            // Fetch both APIs in parallel for better performance
-            const [exchangeResponse, metalResponse] = await Promise.all([
-                fetch(
-                    "https://v6.exchangerate-api.com/v6/04924f3c8c51c3b925904ec3/latest/USD",
-                ),
-                fetch(
-                    `/api/gold/history?symbol=${metal}&startTimestamp=${get30DaysAgoTimestamp()}&endTimestamp=${getTodayTimestamp()}&groupBy=day`,
-                ),
-            ]);
+            // Check if we need to fetch exchange rate (only updates daily)
+            let USD_TO_NPR;
+            let timeNextUpdateUnix;
+            const cachedExchangeRate = getCachedExchangeRate();
             
-            if (!exchangeResponse.ok || !metalResponse.ok) {
+            if (cachedExchangeRate) {
+                // Use cached exchange rate if still valid
+                USD_TO_NPR = cachedExchangeRate.rate;
+                timeNextUpdateUnix = cachedExchangeRate.timeNextUpdateUnix;
+                console.log(`Using cached exchange rate: ${USD_TO_NPR} (valid until ${new Date(timeNextUpdateUnix * 1000).toLocaleString()})`);
+            } else {
+                // Fetch exchange rate only if cache is expired or missing
+                const exchangeResponse = await fetch(
+                    "https://v6.exchangerate-api.com/v6/04924f3c8c51c3b925904ec3/latest/USD",
+                );
+                
+                if (!exchangeResponse.ok) {
+                    throw new Error('Failed to fetch exchange rate');
+                }
+                
+                const exchangeData = await exchangeResponse.json();
+                USD_TO_NPR = exchangeData.conversion_rates.NPR;
+                timeNextUpdateUnix = exchangeData.time_next_update_unix;
+                
+                // Cache the exchange rate with its expiration time
+                setCachedExchangeRate(USD_TO_NPR, timeNextUpdateUnix);
+                console.log(`Fetched new exchange rate: ${USD_TO_NPR} (valid until ${new Date(timeNextUpdateUnix * 1000).toLocaleString()})`);
+            }
+            
+            // Fetch metal prices (updates more frequently)
+            const metalResponse = await fetch(
+                `/api/gold/history?symbol=${metal}&startTimestamp=${get30DaysAgoTimestamp()}&endTimestamp=${getTodayTimestamp()}&groupBy=day`,
+            );
+            
+            if (!metalResponse.ok) {
                 throw new Error(`Failed to fetch ${metal} data from API`);
             }
 
-            const [exchangeData, metalPriceData] = await Promise.all([
-                exchangeResponse.json(),
-                metalResponse.json(),
-            ]);
-
-            const USD_TO_NPR = exchangeData.conversion_rates.NPR;
+            const metalPriceData = await metalResponse.json();
             
             if (metal === 'XAU') {
                 setUsdToNpr(USD_TO_NPR);
