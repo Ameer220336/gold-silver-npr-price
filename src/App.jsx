@@ -40,6 +40,34 @@ const setCachedData = (metal, data) => {
     }
 };
 
+// Current price cache utilities (30 min cache)
+const getCachedCurrentPrice = (metal) => {
+    try {
+        const cached = localStorage.getItem(`currentPrice_${metal}`);
+        if (cached) {
+            const { data, timestamp } = JSON.parse(cached);
+            const now = Date.now();
+            if (now - timestamp < CACHE_DURATION) {
+                return data;
+            }
+        }
+    } catch (error) {
+        console.error('Error reading current price cache:', error);
+    }
+    return null;
+};
+
+const setCachedCurrentPrice = (metal, data) => {
+    try {
+        localStorage.setItem(`currentPrice_${metal}`, JSON.stringify({
+            data,
+            timestamp: Date.now(),
+        }));
+    } catch (error) {
+        console.error('Error writing current price cache:', error);
+    }
+};
+
 // Exchange rate cache utilities
 const getCachedExchangeRate = () => {
     try {
@@ -69,6 +97,25 @@ const setCachedExchangeRate = (rate, timeNextUpdateUnix) => {
     }
 };
 
+// Last refresh time utilities
+const getLastRefreshTime = () => {
+    try {
+        const lastRefresh = localStorage.getItem('lastRefreshTime');
+        return lastRefresh ? parseInt(lastRefresh, 10) : null;
+    } catch (error) {
+        console.error('Error reading last refresh time:', error);
+        return null;
+    }
+};
+
+const setLastRefreshTime = () => {
+    try {
+        localStorage.setItem('lastRefreshTime', Date.now().toString());
+    } catch (error) {
+        console.error('Error writing last refresh time:', error);
+    }
+};
+
 // Utility functions
 const get30DaysAgoTimestamp = () => {
     const date = new Date();
@@ -92,19 +139,7 @@ const formatRS = (value) => {
         count++;
     }
     
-    return 'RS ' + result;
-};
-
-// Convert AD date string (YYYY-MM-DD) to BS format
-const convertToNepaliDate = (adDateString) => {
-    try {
-        const [year, month, day] = adDateString.split('-').map(Number);
-        const nepaliDate = new NepaliDate(new Date(year, month - 1, day));
-        return nepaliDate.format('YYYY-MM-DD', 'np'); // BS format
-    } catch (error) {
-        console.error('Error converting to Nepali date:', error);
-        return adDateString; // Fallback to AD date
-    }
+    return 'Rs. ' + result;
 };
 
 // Format Nepali date for display (YYYY Magh DD)
@@ -138,60 +173,128 @@ const calculatePricePerGram = (maxPriceUSD, usdToNprRate) => {
 function App() {
     const [goldData, setGoldData] = useState([]);
     const [silverData, setSilverData] = useState([]);
+    const [currentGoldPrice, setCurrentGoldPrice] = useState(null);
+    const [currentSilverPrice, setCurrentSilverPrice] = useState(null);
     const [loadingGold, setLoadingGold] = useState(true);
     const [loadingSilver, setLoadingSilver] = useState(true);
+    const [loadingCurrentPrices, setLoadingCurrentPrices] = useState(true);
     const [lastUpdated, setLastUpdated] = useState(null);
     const [error, setError] = useState(null);
     const [usdToNpr, setUsdToNpr] = useState(null);
+    const [exchangeRateNextUpdate, setExchangeRateNextUpdate] = useState(null);
     const [viewMode, setViewMode] = useState('tola'); // 'tola' or 'gms'
 
-    // Fetch and process metal price data
-    const fetchMetalData = useCallback(async (metal, forceRefresh = false) => {
+    // Fetch current price for a metal (updates every 30 min or on manual refresh)
+    const fetchCurrentPrice = useCallback(async (metal, forceRefresh = false) => {
+        try {
+            setLoadingCurrentPrices(true);
+            
+            // Check cache first if not forcing refresh
+            if (!forceRefresh) {
+                const cachedPrice = getCachedCurrentPrice(metal);
+                if (cachedPrice) {
+                    if (metal === 'XAU') {
+                        setCurrentGoldPrice(cachedPrice);
+                    } else {
+                        setCurrentSilverPrice(cachedPrice);
+                    }
+                    console.log(`[${metal}] Using cached current price: $${cachedPrice.price_usd}/oz`);
+                    setLoadingCurrentPrices(false);
+                    return;
+                }
+            }
+            
+            console.log(`[${metal}] Fetching current price from API...`);
+            
+            // Fetch exchange rate
+            let USD_TO_NPR;
+            let timeNextUpdateUnix;
+            const cachedExchangeRate = getCachedExchangeRate();
+            
+            if (cachedExchangeRate) {
+                USD_TO_NPR = cachedExchangeRate.rate;
+                timeNextUpdateUnix = cachedExchangeRate.timeNextUpdateUnix;
+                if (metal === 'XAU') {
+                    setExchangeRateNextUpdate(timeNextUpdateUnix * 1000);
+                }
+            } else {
+                const exchangeResponse = await fetch(
+                    "https://v6.exchangerate-api.com/v6/04924f3c8c51c3b925904ec3/latest/USD"
+                );
+                
+                if (!exchangeResponse.ok) {
+                    throw new Error('Failed to fetch exchange rate');
+                }
+                
+                const exchangeData = await exchangeResponse.json();
+                USD_TO_NPR = exchangeData.conversion_rates.NPR;
+                timeNextUpdateUnix = exchangeData.time_next_update_unix;
+                
+                setCachedExchangeRate(USD_TO_NPR, timeNextUpdateUnix);
+                if (metal === 'XAU') {
+                    setUsdToNpr(USD_TO_NPR);
+                    setExchangeRateNextUpdate(timeNextUpdateUnix * 1000);
+                }
+            }
+            
+            // Fetch current price from proxy API
+            const priceResponse = await fetch(`/api/gold/price/${metal}`);
+            
+            if (!priceResponse.ok) {
+                throw new Error(`Failed to fetch current ${metal} price`);
+            }
+            
+            const priceData = await priceResponse.json();
+            const currentPriceUSD = parseFloat(priceData.price);
+            
+            const priceInfo = {
+                price_usd: currentPriceUSD,
+                price_per_tola: calculatePricePerTola(currentPriceUSD, USD_TO_NPR),
+                price_per_gram: calculatePricePerGram(currentPriceUSD, USD_TO_NPR),
+                timestamp: Date.now(),
+            };
+            
+            // Set state
+            if (metal === 'XAU') {
+                setCurrentGoldPrice(priceInfo);
+                setUsdToNpr(USD_TO_NPR);
+            } else {
+                setCurrentSilverPrice(priceInfo);
+            }
+            
+            // Cache the current price
+            setCachedCurrentPrice(metal, priceInfo);
+            
+            console.log(`[${metal}] Current price fetched: $${currentPriceUSD}/oz = ${formatRS(priceInfo.price_per_tola)}/tola`);
+            setLoadingCurrentPrices(false);
+        } catch (err) {
+            console.error(`Error fetching current ${metal} price:`, err);
+            setLoadingCurrentPrices(false);
+        }
+    }, [setUsdToNpr, setExchangeRateNextUpdate]);
+
+    // Fetch and process metal historical price data (for charts/tables)
+    const fetchMetalData = useCallback(async (metal) => {
         try {
             const setLoading = metal === 'XAU' ? setLoadingGold : setLoadingSilver;
             const setData = metal === 'XAU' ? setGoldData : setSilverData;
             
             setLoading(true);
             setError(null); // Clear any previous errors
-            
-            // Check cache first if not forcing refresh
-            if (!forceRefresh) {
-                const cachedData = getCachedData(metal);
-                if (cachedData && cachedData.chartData) {
-                    // Validate that cached data has all required fields
-                    const hasValidData = cachedData.chartData.every(item => 
-                        item.price_per_tola !== undefined && 
-                        item.price_per_gram !== undefined &&
-                        !isNaN(item.price_per_gram) &&
-                        item.price_per_gram > 0
-                    );
-                    
-                    if (hasValidData) {
-                        setData(cachedData.chartData);
-                        if (metal === 'XAU') {
-                            setUsdToNpr(cachedData.usdToNpr);
-                            setLastUpdated(new Date(cachedData.lastUpdated));
-                        }
-                        setLoading(false);
-                        return;
-                    } else {
-                        // Invalid cache, clear it
-                        localStorage.removeItem(`priceData_${metal}`);
-                        console.log(`Cleared invalid cache for ${metal}`);
-                    }
-                }
-            }
 
-            // Check if we need to fetch exchange rate (only updates daily)
+            // Check if we need to fetch exchange rate (only updates daily based on API's time_next_update_unix)
             let USD_TO_NPR;
             let timeNextUpdateUnix;
             const cachedExchangeRate = getCachedExchangeRate();
             
             if (cachedExchangeRate) {
-                // Use cached exchange rate if still valid
+                // Use cached exchange rate if still valid (checked against API's time_next_update_unix)
                 USD_TO_NPR = cachedExchangeRate.rate;
                 timeNextUpdateUnix = cachedExchangeRate.timeNextUpdateUnix;
-                console.log(`Using cached exchange rate: ${USD_TO_NPR} (valid until ${new Date(timeNextUpdateUnix * 1000).toLocaleString()})`);
+                if (metal === 'XAU') {
+                    setExchangeRateNextUpdate(timeNextUpdateUnix * 1000); // Convert to milliseconds
+                }
+                console.log(`[${metal}] Using cached exchange rate: ${USD_TO_NPR} NPR (valid until ${new Date(timeNextUpdateUnix * 1000).toLocaleString()})`);
             } else {
                 // Fetch exchange rate only if cache is expired or missing
                 const exchangeResponse = await fetch(
@@ -206,12 +309,16 @@ function App() {
                 USD_TO_NPR = exchangeData.conversion_rates.NPR;
                 timeNextUpdateUnix = exchangeData.time_next_update_unix;
                 
-                // Cache the exchange rate with its expiration time
+                // Cache the exchange rate with its expiration time from the API
                 setCachedExchangeRate(USD_TO_NPR, timeNextUpdateUnix);
-                console.log(`Fetched new exchange rate: ${USD_TO_NPR} (valid until ${new Date(timeNextUpdateUnix * 1000).toLocaleString()})`);
+                if (metal === 'XAU') {
+                    setExchangeRateNextUpdate(timeNextUpdateUnix * 1000); // Convert to milliseconds
+                }
+                console.log(`[${metal}] Fetched FRESH exchange rate: ${USD_TO_NPR} NPR (valid until ${new Date(timeNextUpdateUnix * 1000).toLocaleString()})`);
             }
             
-            // Fetch metal prices (updates more frequently)
+            // Fetch metal prices from API
+            console.log(`[${metal}] Fetching fresh metal price data from API...`);
             const metalResponse = await fetch(
                 `/api/gold/history?symbol=${metal}&startTimestamp=${get30DaysAgoTimestamp()}&endTimestamp=${getTodayTimestamp()}&groupBy=day`,
             );
@@ -285,36 +392,159 @@ function App() {
             setData(dataWithPercentChange);
             if (metal === 'XAU') {
                 setLastUpdated(now);
+                setUsdToNpr(USD_TO_NPR);
             }
             setError(null); // Clear error on success
             setLoading(false);
             
-            // Cache the data
+            // Cache the data with current timestamp
             setCachedData(metal, {
                 chartData: dataWithPercentChange,
                 usdToNpr: USD_TO_NPR,
                 lastUpdated: now.toISOString(),
             });
+            
+            console.log(`[${metal}] Successfully fetched and cached ${dataWithPercentChange.length} days of data. Latest price: ${formatRS(dataWithPercentChange[dataWithPercentChange.length - 1].price_per_tola)}/tola`);
         } catch (err) {
             console.error(`Error fetching ${metal} data:`, err);
             setError(err.message || "Failed to fetch data");
             const setLoading = metal === 'XAU' ? setLoadingGold : setLoadingSilver;
             setLoading(false);
         }
-    }, []);
+    }, [setLoadingGold, setLoadingSilver, setGoldData, setSilverData, setError, setLastUpdated, setUsdToNpr, setExchangeRateNextUpdate]);
 
-    // Fetch both metals data
+    // Fetch both current prices and historical data
     const fetchAllData = useCallback((forceRefresh = false) => {
-        fetchMetalData('XAU', forceRefresh);
-        fetchMetalData('XAG', forceRefresh);
-    }, [fetchMetalData]);
+        console.log(`🔄 Fetching all data... ${forceRefresh ? '(Force Refresh)' : ''}`);
+        
+        // Fetch current prices (can be force refreshed)
+        fetchCurrentPrice('XAU', forceRefresh);
+        fetchCurrentPrice('XAG', forceRefresh);
+        
+        // Fetch historical data
+        fetchMetalData('XAU');
+        fetchMetalData('XAG');
+        
+        if (forceRefresh) {
+            setLastRefreshTime(); // Track manual refresh time
+        }
+    }, [fetchMetalData, fetchCurrentPrice]);
 
-    // Initial fetch and setup auto-refresh
+    // Initial fetch and setup auto-refresh with persistent timing
     useEffect(() => {
-        fetchAllData();
-        const interval = setInterval(() => fetchAllData(true), REFRESH_INTERVAL);
-        return () => clearInterval(interval);
-    }, [fetchAllData]);
+        const lastRefresh = getLastRefreshTime();
+        const now = Date.now();
+        
+        // Always load historical data from cache if available
+        const cachedGold = getCachedData('XAU');
+        const cachedSilver = getCachedData('XAG');
+        
+        if (cachedGold?.chartData) {
+            setGoldData(cachedGold.chartData);
+            setLoadingGold(false);
+            console.log('[XAU] Loaded historical data from cache');
+        } else {
+            fetchMetalData('XAU');
+        }
+        
+        if (cachedSilver?.chartData) {
+            setSilverData(cachedSilver.chartData);
+            setLoadingSilver(false);
+            console.log('[XAG] Loaded historical data from cache');
+        } else {
+            fetchMetalData('XAG');
+        }
+        
+        // Handle current prices with 30-min auto-refresh
+        if (!lastRefresh) {
+            // First time loading - fetch current prices immediately
+            console.log('📥 First load - fetching current prices');
+            fetchCurrentPrice('XAU');
+            fetchCurrentPrice('XAG');
+            setLastRefreshTime();
+            
+            // Set up regular 30-minute auto-refresh for current prices
+            const interval = setInterval(() => {
+                console.log('⏰ Auto-refresh triggered (30 min elapsed) - fetching current prices');
+                fetchCurrentPrice('XAU', true);
+                fetchCurrentPrice('XAG', true);
+                setLastRefreshTime();
+            }, REFRESH_INTERVAL);
+            
+            return () => clearInterval(interval);
+        } else {
+            const timeSinceLastRefresh = now - lastRefresh;
+            const timeUntilNextRefresh = REFRESH_INTERVAL - timeSinceLastRefresh;
+            
+            if (timeUntilNextRefresh <= 0) {
+                // More than 30 minutes since last refresh - fetch immediately
+                console.log(`⏰ Last refresh was ${Math.round(timeSinceLastRefresh / 1000 / 60)} minutes ago - fetching current prices`);
+                fetchCurrentPrice('XAU', true);
+                fetchCurrentPrice('XAG', true);
+                setLastRefreshTime();
+                
+                // Set up regular interval from now
+                const interval = setInterval(() => {
+                    console.log('⏰ Auto-refresh triggered (30 min elapsed) - fetching current prices');
+                    fetchCurrentPrice('XAU', true);
+                    fetchCurrentPrice('XAG', true);
+                    setLastRefreshTime();
+                }, REFRESH_INTERVAL);
+                
+                return () => clearInterval(interval);
+            } else {
+                // Less than 30 minutes - load from cache and schedule next refresh
+                const minutesRemaining = Math.round(timeUntilNextRefresh / 1000 / 60);
+                console.log(`⏳ Last refresh was ${Math.round(timeSinceLastRefresh / 1000 / 60)} minutes ago. Next refresh in ${minutesRemaining} minutes`);
+                
+                // Load current prices from cache
+                const cachedGoldPrice = getCachedCurrentPrice('XAU');
+                const cachedSilverPrice = getCachedCurrentPrice('XAG');
+                
+                if (cachedGoldPrice) {
+                    setCurrentGoldPrice(cachedGoldPrice);
+                    setLoadingCurrentPrices(false);
+                    console.log('[XAU] Loaded current price from cache');
+                    
+                    // Load exchange rate info
+                    const cachedExchangeRate = getCachedExchangeRate();
+                    if (cachedExchangeRate) {
+                        setUsdToNpr(cachedExchangeRate.rate);
+                        setExchangeRateNextUpdate(cachedExchangeRate.timeNextUpdateUnix * 1000);
+                    }
+                } else {
+                    fetchCurrentPrice('XAU');
+                }
+                
+                if (cachedSilverPrice) {
+                    setCurrentSilverPrice(cachedSilverPrice);
+                    console.log('[XAG] Loaded current price from cache');
+                } else {
+                    fetchCurrentPrice('XAG');
+                }
+                
+                // Schedule refresh at the correct time
+                const firstTimeout = setTimeout(() => {
+                    console.log('⏰ Auto-refresh triggered (scheduled refresh time reached) - fetching current prices');
+                    fetchCurrentPrice('XAU', true);
+                    fetchCurrentPrice('XAG', true);
+                    setLastRefreshTime();
+                    
+                    // Then set up regular interval
+                    const interval = setInterval(() => {
+                        console.log('⏰ Auto-refresh triggered (30 min elapsed) - fetching current prices');
+                        fetchCurrentPrice('XAU', true);
+                        fetchCurrentPrice('XAG', true);
+                        setLastRefreshTime();
+                    }, REFRESH_INTERVAL);
+                    
+                    return () => clearInterval(interval);
+                }, timeUntilNextRefresh);
+                
+                return () => clearTimeout(firstTimeout);
+            }
+        }
+    }, [fetchMetalData, fetchCurrentPrice]);
 
     // Create chart options for a specific metal
     const createChartOptions = (chartData, metal) => ({
@@ -410,15 +640,23 @@ function App() {
     });
 
     // Render metal card (chart or table)
-    const renderMetalCard = (chartData, metal, loading) => {
+    const renderMetalCard = (chartData, metal, loading, currentPrice, loadingPrice) => {
         const isGold = metal === 'XAU';
         const metalName = isGold ? 'Gold' : 'Silver';
-        const colorClass = isGold ? 'yellow' : 'gray';
 
         return (
             <div className="flex-1 min-w-[300px]">
                 {/* Current Price Card at Top */}
-                {chartData.length > 0 && (
+                {loadingPrice && !currentPrice ? (
+                    <div className={`mb-4 rounded-lg p-4 shadow-lg relative overflow-hidden ${
+                        isGold ? 'gold-shimmer' : 'silver-shimmer'
+                    }`}>
+                        <div className="animate-pulse space-y-3">
+                            <div className="h-4 bg-gray-700 rounded w-1/3"></div>
+                            <div className="h-8 bg-gray-700 rounded w-2/3"></div>
+                        </div>
+                    </div>
+                ) : currentPrice ? (
                     <div className={`mb-4 rounded-lg p-4 shadow-lg relative overflow-hidden ${
                         isGold ? 'gold-shimmer' : 'silver-shimmer'
                     }`}>
@@ -427,7 +665,7 @@ function App() {
                                 <p className={`${
                                     isGold ? 'text-amber-900' : 'text-slate-700'
                                 } font-bold mb-1 drop-shadow-sm`}>
-                                    USD/oz: ${chartData[chartData.length - 1].price_usd.toFixed(2)}
+                                    USD/oz: ${currentPrice.price_usd.toFixed(2)}
                                 </p>
                                 <p className={`${
                                     isGold ? 'text-amber-800' : 'text-slate-600'
@@ -438,18 +676,8 @@ function App() {
                                     <p className={`${
                                         isGold ? 'text-amber-950' : 'text-slate-900'
                                     } text-2xl md:text-3xl font-bold drop-shadow-md`}>
-                                        {formatRS(viewMode === 'tola' ? chartData[chartData.length - 1].price_per_tola : chartData[chartData.length - 1].price_per_gram)}
+                                        {formatRS(viewMode === 'tola' ? currentPrice.price_per_tola : currentPrice.price_per_gram)}
                                     </p>
-                                    {chartData[chartData.length - 1].percentChange !== 0 && (
-                                        <span className={`text-sm font-semibold drop-shadow ${
-                                            chartData[chartData.length - 1].percentChange > 0
-                                                ? 'text-green-700'
-                                                : 'text-red-700'
-                                        }`}>
-                                            {chartData[chartData.length - 1].percentChange > 0 ? '↑' : '↓'}
-                                            {Math.abs(chartData[chartData.length - 1].percentChange).toFixed(2)}%
-                                        </span>
-                                    )}
                                 </div>
                                 <p className={`${
                                     isGold ? 'text-amber-800' : 'text-slate-600'
@@ -462,7 +690,7 @@ function App() {
                             } opacity-40 drop-shadow-lg`} />
                         </div>
                     </div>
-                )}
+                ) : null}
 
                 {/* Loading State */}
                 {loading && chartData.length === 0 ? (
@@ -582,11 +810,11 @@ function App() {
                             {/* Refresh Button */}
                             <button
                                 onClick={() => fetchAllData(true)}
-                                disabled={loadingGold || loadingSilver}
+                                disabled={loadingCurrentPrices}
                                 className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-semibold px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <RefreshCw
-                                    className={`w-4 h-4 ${(loadingGold || loadingSilver) ? "animate-spin" : ""}`}
+                                    className={`w-4 h-4 ${loadingCurrentPrices ? "animate-spin" : ""}`}
                                 />
                                 <span className="hidden sm:inline">
                                     Refresh
@@ -596,23 +824,25 @@ function App() {
                     </div>
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 mt-3 text-xs sm:text-sm">
                         {/* Last Updated Info */}
-                        {lastUpdated && (
+                        {currentGoldPrice && (
                             <div className="flex flex-wrap items-center gap-2">
                                 <div className="flex items-center gap-2 bg-gray-800 px-3 py-1.5 rounded-md">
-                                    <span className="text-gray-500">Updated:</span>
+                                    <span className="text-gray-500">Last Updated:</span>
                                     <span className="text-yellow-400 font-semibold">
-                                        {formatNepaliDateDisplay(lastUpdated.toISOString().split("T")[0])}
+                                        {formatNepaliDateDisplay(new Date(currentGoldPrice.timestamp).toISOString().split("T")[0])}
                                     </span>
                                     <span className="text-gray-400">•</span>
                                     <span className="text-yellow-400 font-semibold">
-                                        {lastUpdated.toLocaleTimeString("en-NP", {
+                                        {new Date(currentGoldPrice.timestamp).toLocaleTimeString("en-NP", {
                                             hour: "2-digit",
                                             minute: "2-digit",
+                                            timeZone: "Asia/Kathmandu",
                                         })}
+                                        <span className="text-gray-500 text-[9px] sm:text-[10px] ml-0.5"> NPT</span>
                                     </span>
                                 </div>
                                 <div className="text-gray-500 text-xs">
-                                    ({lastUpdated.toLocaleDateString("en-US", { 
+                                    ({new Date(currentGoldPrice.timestamp).toLocaleDateString("en-US", { 
                                         month: "short", 
                                         day: "numeric", 
                                         year: "numeric" 
@@ -628,9 +858,19 @@ function App() {
                         {/* Exchange Rate */}
                         {usdToNpr && (
                             <div className="flex items-center gap-2 bg-gray-800 px-3 py-1.5 rounded-md">
-                                <span className="text-gray-500 text-xs sm:text-sm">Exchange Rate:</span>
                                 <span className="text-yellow-400 font-bold text-sm sm:text-base">
                                     1 USD = RS {usdToNpr.toFixed(2)}
+                                    {exchangeRateNextUpdate && (
+                                        <span className="text-green-400 text-xs ml-1">
+                                            (<RefreshCw className="w-3 h-3 inline animate-pulse" />{' '}
+                                            {formatNepaliDateDisplay(new Date(exchangeRateNextUpdate).toISOString().split("T")[0])}{' '}
+                                            {new Date(exchangeRateNextUpdate).toLocaleTimeString('en-NP', {
+                                                hour: '2-digit',
+                                                minute: '2-digit',
+                                                timeZone: 'Asia/Kathmandu'
+                                            })})
+                                        </span>
+                                    )}
                                 </span>
                             </div>
                         )}
@@ -650,8 +890,8 @@ function App() {
 
                 {/* Gold and Silver Charts Side by Side */}
                 <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 mb-6">
-                    {renderMetalCard(goldData, 'XAU', loadingGold)}
-                    {renderMetalCard(silverData, 'XAG', loadingSilver)}
+                    {renderMetalCard(goldData, 'XAU', loadingGold, currentGoldPrice, loadingCurrentPrices)}
+                    {renderMetalCard(silverData, 'XAG', loadingSilver, currentSilverPrice, loadingCurrentPrices)}
                 </div>
 
                 {/* Info Footer */}

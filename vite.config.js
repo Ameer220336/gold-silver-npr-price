@@ -15,7 +15,10 @@ export default defineConfig(({ mode }) => {
         '/api/gold': {
           target: 'https://api.gold-api.com',
           changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api\/gold/, ''),
+          rewrite: (path) => {
+            // Rewrite /api/gold/* to /* 
+            return path.replace(/^\/api\/gold/, '');
+          },
           configure: (proxy, options) => {
             let currentKeyIndex = 0;
             

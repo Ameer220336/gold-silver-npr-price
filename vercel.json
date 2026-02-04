@@ -3,6 +3,10 @@
     {
       "source": "/api/gold/history",
       "destination": "/api/gold-proxy"
+    },
+    {
+      "source": "/api/gold/price",
+      "destination": "/api/gold-proxy"
     }
   ]
 }

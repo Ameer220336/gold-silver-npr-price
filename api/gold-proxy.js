@@ -34,8 +34,17 @@ export default async function handler(req, res) {
     // Extract query parameters
     const { symbol, startTimestamp, endTimestamp, groupBy } = req.query;
 
-    // Build the Gold API URL
-    const goldApiUrl = `https://api.gold-api.com/history?symbol=${symbol}&startTimestamp=${startTimestamp}&endTimestamp=${endTimestamp}&groupBy=${groupBy}`;
+    // Determine endpoint type based on parameters
+    let goldApiUrl;
+    if (startTimestamp && endTimestamp && groupBy) {
+      // Historical data endpoint
+      goldApiUrl = `https://api.gold-api.com/history?symbol=${symbol}&startTimestamp=${startTimestamp}&endTimestamp=${endTimestamp}&groupBy=${groupBy}`;
+    } else if (symbol) {
+      // Current price endpoint
+      goldApiUrl = `https://api.gold-api.com/price/${symbol}`;
+    } else {
+      return res.status(400).json({ error: 'Invalid parameters' });
+    }
 
     // Try each API key until one succeeds
     let lastError = null;
