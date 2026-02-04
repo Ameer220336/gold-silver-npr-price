@@ -103,12 +103,7 @@ function App() {
                     "https://v6.exchangerate-api.com/v6/04924f3c8c51c3b925904ec3/latest/USD",
                 ),
                 fetch(
-                    `https://api.gold-api.com/history?symbol=${metal}&startTimestamp=${get30DaysAgoTimestamp()}&endTimestamp=${getTodayTimestamp()}&groupBy=day`,
-                    {
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                    }
+                    `/api/gold/history?symbol=${metal}&startTimestamp=${get30DaysAgoTimestamp()}&endTimestamp=${getTodayTimestamp()}&groupBy=day`,
                 ),
             ]);
             
