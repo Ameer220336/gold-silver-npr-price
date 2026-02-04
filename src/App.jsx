@@ -7,8 +7,8 @@ import { RefreshCw, TrendingUp, Table, LineChart, Coins } from "lucide-react";
 // const OZ_TO_GM = 28.3495;
 const OZ_TO_GM = 31.1035; // Troy ounce to grams
 const GM_TO_TOLA = 11.664;
-const REFRESH_INTERVAL = 10 * 60 * 1000; // 10 minutes in milliseconds
-const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes cache duration
+const REFRESH_INTERVAL = 30 * 60 * 1000; // 30 minutes in milliseconds
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes cache duration
 const disclaimer = "!!! Disclaimer: For informational use only. Prices are based on daily peak rates and may vary from local market prices.  !!!";
 
 // Cache utilities
@@ -49,7 +49,7 @@ const get30DaysAgoTimestamp = () => {
 const getTodayTimestamp = () => Math.floor(Date.now() / 1000);
 
 const formatNPR = (value) => {
-    return new Intl.NumberFormat("ne-NP", {
+    return new Intl.NumberFormat("en-US", {
         style: "currency",
         currency: "NPR",
         minimumFractionDigits: 0,
@@ -459,7 +459,7 @@ function App() {
                     {lastUpdated && (
                         <p className="text-gray-400 text-sm mt-2">
                             Last updated:{" "}
-                            {lastUpdated.toLocaleString("en-NP", {
+                            {lastUpdated.toLocaleString("en-US", {
                                 dateStyle: "medium",
                                 timeStyle: "short",
                             })}
@@ -496,7 +496,7 @@ function App() {
                 {/* Info Footer */}
                 <div className="mt-8 text-center text-gray-500 text-sm">
                     <p>
-                        Data updates every 10 minutes • Prices include 10%
+                        Data updates every 30 minutes • Prices include 10%
                         TAX margin
                     </p>
                     <p className="mt-1">
