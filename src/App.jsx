@@ -548,7 +548,7 @@ function App() {
                 <div className="mb-4 sm:mb-6">
                     <div className="flex items-center justify-between flex-wrap gap-4">
                         <div className="flex items-center gap-3">
-                            <img src="/assets/logo.png" alt="Gold and Silver Price in nepal" className="w-16 h-16 sm:w-20 sm:h-20 object-contain" />
+                            <img src="/logo.png" alt="Gold and Silver Price in nepal" className="w-16 h-16 sm:w-20 sm:h-20 object-contain" />
                             <h1 className="text-base sm:text-xl md:text-2xl lg:text-3xl font-bold text-white">
                                Bajracharya Jyaasa - Gold and Silver Prices In Nepal
                             </h1>
