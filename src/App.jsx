@@ -50,10 +50,20 @@ const get30DaysAgoTimestamp = () => {
 const getTodayTimestamp = () => Math.floor(Date.now() / 1000);
 
 const formatRS = (value) => {
-    return 'RS ' + new Intl.NumberFormat("en-NP", {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-    }).format(value);
+    // Nepali number formatting: first group of 3 from right, then groups of 2
+    const numStr = Math.round(value).toString();
+    let result = '';
+    let count = 0;
+    
+    for (let i = numStr.length - 1; i >= 0; i--) {
+        if (count === 3 || (count > 3 && (count - 3) % 2 === 0)) {
+            result = ',' + result;
+        }
+        result = numStr[i] + result;
+        count++;
+    }
+    
+    return 'RS ' + result;
 };
 
 // Convert AD date string (YYYY-MM-DD) to BS format
@@ -361,35 +371,47 @@ function App() {
             <div className="flex-1 min-w-[300px]">
                 {/* Current Price Card at Top */}
                 {chartData.length > 0 && (
-                    <div className={`mb-4 bg-gradient-to-br ${isGold ? 'from-yellow-600 to-yellow-500' : 'from-gray-600 to-gray-500'} rounded-lg p-4 shadow-xl`}>
-                        <div className="flex items-center justify-between">
+                    <div className={`mb-4 rounded-lg p-4 shadow-lg relative overflow-hidden ${
+                        isGold ? 'gold-shimmer' : 'silver-shimmer'
+                    }`}>
+                        <div className="flex items-center justify-between relative z-10">
                             <div className="flex-1">
-                                <p className={`${isGold ? 'text-yellow-100' : 'text-gray-100'} text-xs mb-1`}>
+                                <p className={`${
+                                    isGold ? 'text-amber-900' : 'text-slate-700'
+                                } font-bold mb-1 drop-shadow-sm`}>
                                     USD/oz: ${chartData[chartData.length - 1].price_usd.toFixed(2)}
                                 </p>
-                                <p className={`${isGold ? 'text-yellow-100' : 'text-gray-100'} text-xs mb-2`}>
+                                <p className={`${
+                                    isGold ? 'text-amber-800' : 'text-slate-600'
+                                } text-xs mb-2 font-semibold`}>
                                     Current {metalName} Price
                                 </p>
                                 <div className="flex items-baseline gap-2">
-                                    <p className="text-white text-2xl md:text-3xl font-bold">
+                                    <p className={`${
+                                        isGold ? 'text-amber-950' : 'text-slate-900'
+                                    } text-2xl md:text-3xl font-bold drop-shadow-md`}>
                                         {formatRS(viewMode === 'tola' ? chartData[chartData.length - 1].price_per_tola : chartData[chartData.length - 1].price_per_gram)}
                                     </p>
                                     {chartData[chartData.length - 1].percentChange !== 0 && (
-                                        <span className={`text-sm font-semibold ${
+                                        <span className={`text-sm font-semibold drop-shadow ${
                                             chartData[chartData.length - 1].percentChange > 0
-                                                ? 'text-green-300'
-                                                : 'text-red-300'
+                                                ? 'text-green-700'
+                                                : 'text-red-700'
                                         }`}>
                                             {chartData[chartData.length - 1].percentChange > 0 ? '↑' : '↓'}
                                             {Math.abs(chartData[chartData.length - 1].percentChange).toFixed(2)}%
                                         </span>
                                     )}
                                 </div>
-                                <p className={`${isGold ? 'text-yellow-100' : 'text-gray-100'} text-xs mt-1`}>
+                                <p className={`${
+                                    isGold ? 'text-amber-800' : 'text-slate-600'
+                                } text-xs mt-1 font-semibold`}>
                                     per {viewMode === 'tola' ? 'Tola' : 'Gram'}
                                 </p>
                             </div>
-                            <Coins className={`w-12 h-12 ${isGold ? 'text-yellow-200' : 'text-gray-200'} opacity-50`} />
+                            <Coins className={`w-12 h-12 ${
+                                isGold ? 'text-amber-700' : 'text-slate-600'
+                            } opacity-40 drop-shadow-lg`} />
                         </div>
                     </div>
                 )}
@@ -406,7 +428,7 @@ function App() {
                     /* Chart and Table View */
                     <>
                         {/* Chart */}
-                        <div className="bg-gray-800 rounded-lg p-4 shadow-xl mb-4">
+                        <div className="bg-gray-800 rounded-lg p-4 shadow-lg mb-4">
                             {chartData.length > 0 ? (
                                 <HighchartsReact
                                     highcharts={Highcharts}
@@ -421,7 +443,7 @@ function App() {
                         
                         {/* Data Table */}
                         {chartData.length > 0 && (
-                            <div className="bg-gray-800 rounded-lg p-4 shadow-xl">
+                            <div className="bg-gray-800 rounded-lg p-4 shadow-lg">
                                 <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
                                     <table className="w-full text-left text-sm">
                                         <thead className="sticky top-0 bg-gray-800">
@@ -489,7 +511,7 @@ function App() {
                             <div className="flex items-center gap-2 bg-gray-800 px-4 py-2 rounded-lg">
                                 <div className="w-3 h-3 bg-red-500 rounded-full pulse-red"></div>
                                 <span className="text-sm font-medium">
-                                    Refreshes 30 mins
+                                    Every 30 mins
                                 </span>
                             </div>
 
