@@ -678,6 +678,21 @@ function App() {
                                     } text-2xl md:text-3xl font-bold drop-shadow-md`}>
                                         {formatRS(viewMode === 'tola' ? currentPrice.price_per_tola : currentPrice.price_per_gram)}
                                     </p>
+                                    {chartData.length > 0 && (() => {
+                                        const latestHistorical = chartData[chartData.length - 1];
+                                        const historicalPrice = viewMode === 'tola' ? latestHistorical.price_per_tola : latestHistorical.price_per_gram;
+                                        const currentPriceValue = viewMode === 'tola' ? currentPrice.price_per_tola : currentPrice.price_per_gram;
+                                        const percentChange = ((currentPriceValue - historicalPrice) / historicalPrice) * 100;
+                                        
+                                        return percentChange !== 0 && !isNaN(percentChange) ? (
+                                            <span className={`text-md font-semibold drop-shadow ${
+                                                percentChange > 0 ? 'text-green-700' : 'text-red-700'
+                                            }`}>
+                                                {percentChange > 0 ? '↑' : '↓'}
+                                                {Math.abs(percentChange).toFixed(2)}%
+                                            </span>
+                                        ) : null;
+                                    })()}
                                 </div>
                                 <p className={`${
                                     isGold ? 'text-amber-800' : 'text-slate-600'
