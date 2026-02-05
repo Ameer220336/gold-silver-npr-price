@@ -10,7 +10,7 @@ const OZ_TO_GM = 31.1035; // Troy ounce to grams
 const GM_TO_TOLA = 11.664;
 const REFRESH_INTERVAL = 30 * 60 * 1000; // 30 minutes in milliseconds
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes cache duration
-const disclaimer = "!!! Disclaimer: For informational use only. Prices are based on daily peak rates and may vary from local market prices.  !!!";
+const disclaimer = '<span className="font-semibold">⚠️ Disclaimer:</span> For informational use only. Prices are based on up-to-date US market rates and may vary from local market prices.';
 
 // Cache utilities
 const getCachedData = (metal) => {
@@ -899,9 +899,11 @@ function App() {
                             </div>
                         )}
                     </div>
-                    <p className="text-gray-400 text-xs sm:text-sm mt-2">
-                        {disclaimer}
-                    </p>
+                    <div className="bg-red-900/20 border border-red-800/50 rounded-lg p-3 mt-3">
+                        <p className="text-red-300 text-[10px] sm:text-xs text-center leading-relaxed">
+                            <span dangerouslySetInnerHTML={{ __html: disclaimer }} />
+                        </p>
+                    </div>
                 </div>
 
                 {/* Error State */}
@@ -919,22 +921,79 @@ function App() {
                 </div>
 
                 {/* Info Footer */}
-                <div className="mt-8 text-center text-gray-500 text-sm">
-                    <p>
-                        Data updates every 30 minutes • Gold: 10% margin + Rs. 5000/tola • Silver: 16% margin + Rs. 50/tola
-                    </p>
-                    <p className="mt-1">
-                        1 Tola = {GM_TO_TOLA.toFixed(3)} grams • 1 Ounce ={" "}
-                        {OZ_TO_GM.toFixed(4)} grams
-                    </p>
-                    <p className="mt-1">
-                        Methodology: 
-                        Gold per Tola = ((USD/Ounce ÷ {OZ_TO_GM} grams) × USD to RS × {GM_TO_TOLA} grams) × 10% (TAX) + Rs. 5000 (Bank Margin) <br/> 
-                        Silver per Tola = ((USD/Ounce ÷ {OZ_TO_GM} grams) × USD to RS × {GM_TO_TOLA} grams) × 16% (TAX) + Rs. 50 (Bank Margin)
-                    </p>
-                    <p className="mt-1">
-                        {disclaimer}
-                    </p>
+                <div className="space-y-4 mb-6">
+                    {/* Quick Info Cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {/* Conversions Card */}
+                        <div className="bg-gray-800 rounded-lg p-4">
+                            <h3 className="text-yellow-400 font-semibold text-sm mb-2 flex items-center gap-2">
+                                <span>📏</span> Unit Conversions
+                            </h3>
+                            <div className="space-y-1 text-gray-400 text-xs">
+                                <p>• 1 Tola = <span className="text-gray-200 font-medium">{GM_TO_TOLA.toFixed(3)} grams</span></p>
+                                <p>• 1 Troy Ounce = <span className="text-gray-200 font-medium">{OZ_TO_GM.toFixed(4)} grams</span></p>
+                            </div>
+                        </div>
+
+                        {/* Pricing Info Card */}
+                        <div className="bg-gray-800 rounded-lg p-4">
+                            <h3 className="text-yellow-400 font-semibold text-sm mb-2 flex items-center gap-2">
+                                <span>💰</span> Pricing Margins
+                            </h3>
+                            <div className="space-y-1 text-gray-400 text-xs">
+                                <p>• Gold: <span className="text-gray-200 font-medium">10% (TAX) + Rs. 5,000/tola (Bank Margin)</span></p>
+                                <p>• Silver: <span className="text-gray-200 font-medium">16% (TAX) + Rs. 50/tola (Bank Margin)</span></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Methodology Card */}
+                    <div className="bg-gray-800 rounded-lg p-4">
+                        <h3 className="text-yellow-400 font-semibold text-sm mb-3 flex items-center gap-2">
+                            <span>🧮</span> Calculation Methodology
+                        </h3>
+                        <div className="space-y-3 text-xs">
+                            {/* Gold Formula */}
+                            <div className="bg-gray-900 rounded p-3 border-l-4 border-yellow-500">
+                                <p className="text-yellow-400 font-semibold mb-2">Gold (per Tola)</p>
+                                <div className="text-gray-300 space-y-1">
+                                    <p className="font-mono text-[10px] sm:text-xs">
+                                        = [(USD/oz ÷ {OZ_TO_GM}) × USD-to-NPR × {GM_TO_TOLA}] × 1.10 + 5,000
+                                    </p>
+                                    <p className="text-gray-500 text-[9px] sm:text-[10px] mt-1">
+                                        (Base price × 10% TAX + Rs. 5,000 Bank Margin)
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Silver Formula */}
+                            <div className="bg-gray-900 rounded p-3 border-l-4 border-slate-400">
+                                <p className="text-slate-400 font-semibold mb-2">Silver (per Tola)</p>
+                                <div className="text-gray-300 space-y-1">
+                                    <p className="font-mono text-[10px] sm:text-xs">
+                                        = [(USD/oz ÷ {OZ_TO_GM}) × USD-to-NPR × {GM_TO_TOLA}] × 1.16 + 50
+                                    </p>
+                                    <p className="text-gray-500 text-[9px] sm:text-[10px] mt-1">
+                                        (Base price × 16% TAX + Rs. 50 Bank Margin)
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Disclaimer */}
+                    <div className="bg-red-900/20 border border-red-800/50 rounded-lg p-3">
+                        <p className="text-red-300 text-[10px] sm:text-xs text-center leading-relaxed">
+                            <span dangerouslySetInnerHTML={{ __html: disclaimer }} />
+                        </p>
+                    </div>
+
+                    {/* Copyright Footer */}
+                    <div className="mt-6 pt-4 border-t border-gray-700">
+                        <p className="text-center text-gray-500 text-xs">
+                            © {new Date().getFullYear()} Bajracharya Jyaasa. All rights reserved.
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
