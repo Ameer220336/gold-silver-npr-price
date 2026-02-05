@@ -158,16 +158,24 @@ const formatNepaliDateDisplay = (adDateString) => {
     }
 };
 
-// Calculate price per tola with margin
-const calculatePricePerTola = (maxPriceUSD, usdToNprRate) => {
-    return Math.round(calculatePricePerGram(maxPriceUSD, usdToNprRate) * GM_TO_TOLA); 
-};
-
-// Calculate price per gram with margin
-const calculatePricePerGram = (maxPriceUSD, usdToNprRate) => {
+// Calculate price per gram with metal-specific margin
+const calculatePricePerGram = (maxPriceUSD, usdToNprRate, metal) => {
     const pricePerGmUSD = maxPriceUSD / OZ_TO_GM;
     const pricePerGmNPR = pricePerGmUSD * usdToNprRate;
-    return Math.round(pricePerGmNPR * 1.105); // 10.5% margin
+    
+    if (metal === 'XAU') {
+        // Gold: 10% margin + Rs. 5000/11.664 per gram
+        return Math.round(pricePerGmNPR * 1.10 + (5000 / GM_TO_TOLA));
+    } else {
+        // Silver: 16% margin + Rs. 50/11.664 per gram
+        return Math.round(pricePerGmNPR * 1.16 + (50 / GM_TO_TOLA));
+    }
+};
+
+// Calculate price per tola based on gram price
+const calculatePricePerTola = (maxPriceUSD, usdToNprRate, metal) => {
+    const pricePerGram = calculatePricePerGram(maxPriceUSD, usdToNprRate, metal);
+    return Math.round(pricePerGram * GM_TO_TOLA);
 };
 
 function App() {
@@ -249,8 +257,8 @@ function App() {
             
             const priceInfo = {
                 price_usd: currentPriceUSD,
-                price_per_tola: calculatePricePerTola(currentPriceUSD, USD_TO_NPR),
-                price_per_gram: calculatePricePerGram(currentPriceUSD, USD_TO_NPR),
+                price_per_tola: calculatePricePerTola(currentPriceUSD, USD_TO_NPR, metal),
+                price_per_gram: calculatePricePerGram(currentPriceUSD, USD_TO_NPR, metal),
                 timestamp: Date.now(),
             };
             
@@ -337,8 +345,8 @@ function App() {
             const processedData = metalPriceData
                 .map((item) => {
                     const maxPrice = parseFloat(item.max_price);
-                    const pricePerTola = calculatePricePerTola(maxPrice, USD_TO_NPR);
-                    const pricePerGram = calculatePricePerGram(maxPrice, USD_TO_NPR);
+                    const pricePerTola = calculatePricePerTola(maxPrice, USD_TO_NPR, metal);
+                    const pricePerGram = calculatePricePerGram(maxPrice, USD_TO_NPR, metal);
                     
                     return {
                         day: item.day.split(" ")[0], // Extract date (YYYY-MM-DD)
@@ -682,14 +690,15 @@ function App() {
                                         const latestHistorical = chartData[chartData.length - 1];
                                         const historicalPrice = viewMode === 'tola' ? latestHistorical.price_per_tola : latestHistorical.price_per_gram;
                                         const currentPriceValue = viewMode === 'tola' ? currentPrice.price_per_tola : currentPrice.price_per_gram;
-                                        const percentChange = ((currentPriceValue - historicalPrice) / historicalPrice) * 100;
+                                        const absoluteChange = currentPriceValue - historicalPrice;
+                                        const percentChange = (absoluteChange / historicalPrice) * 100;
                                         
                                         return percentChange !== 0 && !isNaN(percentChange) ? (
                                             <span className={`text-md font-semibold drop-shadow ${
                                                 percentChange > 0 ? 'text-green-700' : 'text-red-700'
                                             }`}>
                                                 {percentChange > 0 ? '↑' : '↓'}
-                                                {Math.abs(percentChange).toFixed(2)}%
+                                                {Math.abs(percentChange).toFixed(2)}% ({formatRS(Math.abs(absoluteChange))})
                                             </span>
                                         ) : null;
                                     })()}
@@ -912,8 +921,7 @@ function App() {
                 {/* Info Footer */}
                 <div className="mt-8 text-center text-gray-500 text-sm">
                     <p>
-                        Data updates every 30 minutes • Prices include 10.5%
-                        TAX margin + Bank Margin
+                        Data updates every 30 minutes • Gold: 10% margin + Rs. 5000/tola • Silver: 16% margin + Rs. 50/tola
                     </p>
                     <p className="mt-1">
                         1 Tola = {GM_TO_TOLA.toFixed(3)} grams • 1 Ounce ={" "}
@@ -921,8 +929,8 @@ function App() {
                     </p>
                     <p className="mt-1">
                         Methodology: 
-                        1 Tola Price = ((Price USD/Ounce ÷ {OZ_TO_GM} grams) ×
-                        USD to RS) × {GM_TO_TOLA} grams + (10% tax margin) + (0.5% bank margin)
+                        Gold per Tola = ((USD/Ounce ÷ {OZ_TO_GM} grams) × USD to RS × {GM_TO_TOLA} grams) × 10% (TAX) + Rs. 5000 (Bank Margin) <br/> 
+                        Silver per Tola = ((USD/Ounce ÷ {OZ_TO_GM} grams) × USD to RS × {GM_TO_TOLA} grams) × 16% (TAX) + Rs. 50 (Bank Margin)
                     </p>
                     <p className="mt-1">
                         {disclaimer}
