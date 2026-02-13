@@ -463,11 +463,11 @@ function App() {
                                     <table className="w-full table-fixed text-left text-[12px] sm:text-sm">
                                         <thead className="sticky top-0 bg-gray-800">
                                             <tr className="border-b border-gray-700">
-                                                <th className="w-[8%] px-1.5 sm:px-2 py-2 text-gray-300 font-semibold text-[10px] sm:text-xs">#</th>
-                                                <th className="w-[27%] px-1.5 sm:px-2 py-2 text-gray-300 font-semibold text-[10px] sm:text-xs">Date</th>
-                                                <th className="w-[21%] px-1.5 sm:px-2 py-2 text-gray-300 font-semibold text-right text-[10px] sm:text-xs">USD/oz</th>
-                                                <th className="w-[27%] px-1.5 sm:px-2 py-2 text-gray-300 font-semibold text-right text-[10px] sm:text-xs">RS/{viewMode === 'tola' ? 'Tola' : 'Gram'}</th>
-                                                <th className="w-[17%] px-1.5 sm:px-2 py-2 text-gray-300 font-semibold text-right text-[10px] sm:text-xs">Change %</th>
+                                                <th className="w-[5%] px-1.5 sm:px-2 py-2 text-gray-300 font-semibold text-[10px] sm:text-xs">#</th>
+                                                <th className="w-[32%] px-1.5 sm:px-2 py-2 text-gray-300 font-semibold text-[10px] sm:text-xs">Date</th>
+                                                <th className="w-[18%] px-1.5 sm:px-2 py-2 text-gray-300 font-semibold text-right text-[10px] sm:text-xs">USD/oz</th>
+                                                <th className="w-[28%] px-1.5 sm:px-2 py-2 text-gray-300 font-semibold text-right text-[10px] sm:text-xs">RS/{viewMode === 'tola' ? 'Tola' : 'Gram'}</th>
+                                                <th className="w-[17%] px-1.5 sm:px-2 py-2 text-gray-300 font-semibold text-right text-[10px] sm:text-xs">Change</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -477,7 +477,7 @@ function App() {
                                                     className="border-b border-gray-700/50 hover:bg-gray-700/30 transition-colors"
                                                 >
                                                     <td className="px-1.5 sm:px-2 py-2 text-gray-400 text-[11px] sm:text-xs">{index + 1}</td>
-                                                    <td className="px-1.5 sm:px-2 py-2 text-gray-100 text-[11px] sm:text-xs whitespace-nowrap">{formatNepaliDateDisplay(item.day)}</td>
+                                                    <td className="px-1.5 sm:px-2 py-2 text-gray-100 text-[12px] sm:text-xs whitespace-nowrap">{formatNepaliDateDisplay(item.day)}</td>
                                                     <td className="px-1.5 sm:px-2 py-2 text-right text-gray-100 text-[11px] sm:text-xs whitespace-nowrap">
                                                         ${item.price_usd.toFixed(2)}
                                                     </td>
@@ -491,7 +491,7 @@ function App() {
                                                         {!item.percentChange || isNaN(item.percentChange) || item.percentChange === 0 ? '-' : (
                                                             <span>
                                                                 {item.percentChange > 0 ? '↑' : '↓'}
-                                                                {Math.abs(item.percentChange).toFixed(2)}%
+                                                                {Math.abs(item.percentChange).toFixed(1)}%
                                                             </span>
                                                         )}
                                                     </td>
