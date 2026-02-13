@@ -13,7 +13,7 @@ const REFRESH_INTERVAL = 30 * 60 * 1000; // 30 minutes
 const disclaimer = '<span className="font-semibold">⚠️ Disclaimer:</span> For informational use only. Prices are based on up-to-date US market rates and may vary from local market prices.';
 
 // ============================================================================
-// CACHE UTILITIES - Store data in browser localStorage to reduce API calls
+// CACHE UTILITIES - Exchange rate cache in browser localStorage
 // ============================================================================
 
 // Exchange rate cache (USD to NPR)
@@ -63,7 +63,7 @@ const formatRS = (value) => {
         count++;
     }
     
-    return 'Rs. ' + result;
+    return 'Rs.' + result;
 };
 
 // Convert AD date to Nepali BS date for display
@@ -209,7 +209,7 @@ function App() {
                     const pricePerGram = calculatePricePerGram(priceUSD, USD_TO_NPR, metal);
                     
                     return {
-                        day: item.date, // Already YYYY-MM-DD format
+                        day: item.date, 
                         price_usd: priceUSD,
                         price_per_tola: pricePerTola,
                         price_per_gram: pricePerGram,
@@ -245,11 +245,6 @@ function App() {
                 throw new Error(`No valid ${metal} price data after processing`);
             }
             
-            // Log sample data for debugging (only in development)
-            if (process.env.NODE_ENV !== 'production' && dataWithPercentChange.length > 0) {
-                const lastItem = dataWithPercentChange[dataWithPercentChange.length - 1];
-            }
-            
             setData(dataWithPercentChange);
             if (metal === 'XAU') {
                 setLastUpdated(now);
@@ -264,7 +259,7 @@ function App() {
             const setLoading = metal === 'XAU' ? setLoadingGold : setLoadingSilver;
             setLoading(false);
         }
-    }, [setLoadingGold, setLoadingSilver, setGoldData, setSilverData, setError, setLastUpdated, setUsdToNpr, setExchangeRateNextUpdate]);
+    }, []);
 
     // Fetch both metals data
     const fetchAllData = useCallback(() => {
@@ -464,15 +459,15 @@ function App() {
                         {/* Data Table */}
                         {chartData.length > 0 && (
                             <div className="bg-gray-800 rounded-lg p-4 shadow-lg">
-                                <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
-                                    <table className="w-full text-left text-sm">
+                                <div className="max-h-[400px] overflow-y-auto">
+                                    <table className="w-full table-fixed text-left text-[12px] sm:text-sm">
                                         <thead className="sticky top-0 bg-gray-800">
                                             <tr className="border-b border-gray-700">
-                                                <th className="px-2 py-2 text-gray-300 font-semibold text-xs">#</th>
-                                                <th className="px-2 py-2 text-gray-300 font-semibold text-xs">Date</th>
-                                                <th className="px-2 py-2 text-gray-300 font-semibold text-right text-xs">USD/oz</th>
-                                                <th className="px-2 py-2 text-gray-300 font-semibold text-right text-xs">RS/{viewMode === 'tola' ? 'Tola' : 'Gram'}</th>
-                                                <th className="px-2 py-2 text-gray-300 font-semibold text-right text-xs">Change %</th>
+                                                <th className="w-[8%] px-1.5 sm:px-2 py-2 text-gray-300 font-semibold text-[10px] sm:text-xs">#</th>
+                                                <th className="w-[27%] px-1.5 sm:px-2 py-2 text-gray-300 font-semibold text-[10px] sm:text-xs">Date</th>
+                                                <th className="w-[21%] px-1.5 sm:px-2 py-2 text-gray-300 font-semibold text-right text-[10px] sm:text-xs">USD/oz</th>
+                                                <th className="w-[27%] px-1.5 sm:px-2 py-2 text-gray-300 font-semibold text-right text-[10px] sm:text-xs">RS/{viewMode === 'tola' ? 'Tola' : 'Gram'}</th>
+                                                <th className="w-[17%] px-1.5 sm:px-2 py-2 text-gray-300 font-semibold text-right text-[10px] sm:text-xs">Change %</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -481,15 +476,15 @@ function App() {
                                                     key={item.day}
                                                     className="border-b border-gray-700/50 hover:bg-gray-700/30 transition-colors"
                                                 >
-                                                    <td className="px-2 py-2 text-gray-400 text-xs">{index + 1}</td>
-                                                    <td className="px-2 py-2 text-gray-100 text-xs">{formatNepaliDateDisplay(item.day)}</td>
-                                                    <td className="px-2 py-2 text-right text-gray-100 text-xs">
+                                                    <td className="px-1.5 sm:px-2 py-2 text-gray-400 text-[11px] sm:text-xs">{index + 1}</td>
+                                                    <td className="px-1.5 sm:px-2 py-2 text-gray-100 text-[11px] sm:text-xs whitespace-nowrap">{formatNepaliDateDisplay(item.day)}</td>
+                                                    <td className="px-1.5 sm:px-2 py-2 text-right text-gray-100 text-[11px] sm:text-xs whitespace-nowrap">
                                                         ${item.price_usd.toFixed(2)}
                                                     </td>
-                                                    <td className={`px-2 py-2 text-right font-semibold text-xs ${isGold ? 'text-yellow-400' : 'text-gray-400'}`}>
+                                                    <td className={`px-1.5 sm:px-2 py-2 text-right font-semibold text-[12px] sm:text-xs whitespace-nowrap ${isGold ? 'text-yellow-400' : 'text-gray-400'}`}>
                                                         {formatRS(viewMode === 'tola' ? item.price_per_tola : item.price_per_gram)}
                                                     </td>
-                                                    <td className={`px-2 py-2 text-right font-semibold text-xs ${
+                                                    <td className={`px-1.5 sm:px-2 py-2 text-right font-semibold text-[11px] sm:text-xs whitespace-nowrap ${
                                                         !item.percentChange || isNaN(item.percentChange) || item.percentChange === 0 ? 'text-gray-500' :
                                                         item.percentChange > 0 ? 'text-green-400' : 'text-red-400'
                                                     }`}>
