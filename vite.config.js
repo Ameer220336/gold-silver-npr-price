@@ -1,46 +1,32 @@
-import { defineConfig, loadEnv } from 'vite'
+import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '')
-  
-  // Get API keys from comma-separated list
-  const apiKeysString = env.VITE_GOLD_API_SECRET || env.VITE_GOLD_API_KEY || '';
-  const apiKeys = apiKeysString.split(',').map(k => k.trim()).filter(k => k);
-  
-  return {
-    plugins: [react()],
-    server: {
-      proxy: {
-        '/api/gold': {
-          target: 'https://api.gold-api.com',
-          changeOrigin: true,
-          rewrite: (path) => {
-            // Rewrite /api/gold/* to /* 
-            return path.replace(/^\/api\/gold/, '');
-          },
-          configure: (proxy, options) => {
-            let currentKeyIndex = 0;
-            
-            proxy.on('proxyReq', (proxyReq, req, res) => {
-              // Rotate through keys on each request
-              if (apiKeys.length > 0) {
-                const key = apiKeys[currentKeyIndex % apiKeys.length];
-                currentKeyIndex++;
-                proxyReq.setHeader('x-api-key', key);
-              }
-              proxyReq.setHeader('Content-Type', 'application/json');
-            });
-            
-            proxy.on('proxyRes', (proxyRes, req, res) => {
-              // Log if rate limited
-              if (proxyRes.statusCode === 429) {
-                console.log('Rate limit hit, will use next key on next request');
-              }
-            });
-          },
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    proxy: {
+      // Proxy for NEW API (local development only)
+      // In production, Vercel serves /api/get-metal-price from api/get-metal-price.js
+      '/api/get-metal-price': {
+        target: 'https://services.bajracharyajyaasa.com',
+        changeOrigin: true,
+        rewrite: (path) => {
+          // Extract symbol from query params
+          const url = new URL(path, 'http://localhost');
+          const symbol = url.searchParams.get('symbol') || 'XAU';
+          
+          // NEW API only needs symbol and api_key
+          return `/get-metal-prices.php?symbol=${symbol}&api_key=trust-me-123`;
+        },
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq, req) => {
+            console.log('[VITE PROXY] Request:', req.url);
+          });
+          proxy.on('proxyRes', (proxyRes, req) => {
+            console.log('[VITE PROXY] Response status:', proxyRes.statusCode);
+          });
         },
       },
     },
-  }
+  },
 })
