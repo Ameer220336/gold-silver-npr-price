@@ -27,6 +27,11 @@ export default defineConfig({
           });
         },
       },
+      '/api/fenegosida-rates': {
+        target: 'https://services.bajracharyajyaasa.com',
+        changeOrigin: true,
+        rewrite: () => '/get-fenegosida-prices.php?api_key=trust-me-123',
+      },
     },
   },
 })

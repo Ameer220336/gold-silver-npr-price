@@ -125,6 +125,8 @@ function App() {
     const [usdToNpr, setUsdToNpr] = useState(null);
     const [viewMode, setViewMode] = useState('tola'); // 'tola' or 'gms' (10 gram)
     const [exchangeRateNextUpdate, setExchangeRateNextUpdate] = useState(null);
+    const [fenegosidaData, setFenegosidaData] = useState(null);
+    const [loadingFenegosida, setLoadingFenegosida] = useState(true);
 
     // ========================================================================
     // DATA FETCHING FUNCTION: Fetch Historical Data (30 days)
@@ -262,11 +264,34 @@ function App() {
         }
     }, []);
 
+    const fetchFenegosidaData = useCallback(async () => {
+        try {
+            setLoadingFenegosida(true);
+            const response = await fetch('/api/fenegosida-rates');
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(`Failed to fetch Fenegosida data: ${JSON.stringify(data)}`);
+            }
+
+            if (!data?.success || !data?.data) {
+                throw new Error('Invalid Fenegosida response format');
+            }
+
+            setFenegosidaData(data.data);
+        } catch (err) {
+            console.error('Error fetching Fenegosida data:', err);
+        } finally {
+            setLoadingFenegosida(false);
+        }
+    }, []);
+
     // Fetch both metals data
     const fetchAllData = useCallback(() => {
+        fetchFenegosidaData();
         fetchMetalData('XAU');
         fetchMetalData('XAG');
-    }, [fetchMetalData]);
+    }, [fetchFenegosidaData, fetchMetalData]);
 
     // Initial fetch and setup auto-refresh
     useEffect(() => {
@@ -379,17 +404,75 @@ function App() {
     const renderMetalCard = (chartData, metal, loading) => {
         const isGold = metal === 'XAU';
         const metalName = isGold ? 'Gold' : 'Silver';
+        const fenegosidaKey = isGold ? 'gold' : 'silver';
+        const fenegosidaRate = fenegosidaData?.[fenegosidaKey] || null;
+        const fenegosidaDiffRaw = fenegosidaRate?.difference;
+        const fenegosidaDiff = fenegosidaDiffRaw !== null && fenegosidaDiffRaw !== undefined
+            ? Number(fenegosidaDiffRaw)
+            : null;
+        const hasFenegosidaDiff = Number.isFinite(fenegosidaDiff);
         
         // Get current price from last item in historical data
         const currentPrice = chartData.length > 0 ? chartData[chartData.length - 1] : null;
         const previousPrice = chartData.length > 1 ? chartData[chartData.length - 2] : null;
         const currentUnitKey = viewMode === 'tola' ? 'price_per_tola' : 'price_per_10_gram';
+        const hasPreviousPrice = Boolean(currentPrice && previousPrice);
+        const currentPercentChange = Number.isFinite(currentPrice?.percentChange)
+            ? currentPrice.percentChange
+            : 0;
         const priceDifferenceValue = currentPrice && previousPrice
             ? Math.abs(currentPrice[currentUnitKey] - previousPrice[currentUnitKey])
             : 0;
 
         return (
             <div className="flex-1 min-w-[300px]">
+                {/* Fenegosida Live Rate Card */}
+                <div className={`mb-4 rounded-lg p-4 shadow-lg border ${
+                    isGold
+                        ? 'bg-gradient-to-r from-gray-800 to-gray-900 border-yellow-500/30'
+                        : 'bg-gradient-to-r from-gray-800 to-gray-900 border-gray-500/30'
+                }`}>
+                    <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                            <p className={`font-bold text-sm mb-1 ${isGold ? 'text-yellow-300' : 'text-gray-200'}`}>
+                                🔥 Nepal's {metalName} Price
+                            </p>
+                            {loadingFenegosida ? (
+                                <p className="text-gray-400 text-xs">Loading latest Nepal's price...</p>
+                            ) : fenegosidaRate?.latest_price ? (
+                                <>
+                                    <p className={`text-2xl md:text-3xl font-bold tracking-tight ${isGold ? 'text-yellow-200' : 'text-gray-100'}`}>
+                                        {formatRS(fenegosidaRate.latest_price)}
+                                    </p>
+                                    <div className="flex flex-wrap items-center gap-2 mt-1">
+                                        <p className="text-xs text-gray-400 font-medium">
+                                            As of {formatNepaliDateDisplay(fenegosidaRate.latest_date)}
+                                        </p>
+                                        {hasFenegosidaDiff ? (
+                                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${
+                                                fenegosidaDiff > 0
+                                                    ? 'text-green-300 border-green-500/40 bg-green-900/20'
+                                                    : fenegosidaDiff < 0
+                                                        ? 'text-red-300 border-red-500/40 bg-red-900/20'
+                                                        : 'text-gray-300 border-gray-500/40 bg-gray-800/40'
+                                            }`}>
+                                                {fenegosidaDiff > 0 ? '↑' : fenegosidaDiff < 0 ? '↓' : '→'} Changed: {formatRS(Math.abs(fenegosidaDiff))}
+                                            </span>
+                                        ) : (
+                                            <span className="text-xs text-gray-400 px-2 py-0.5 rounded-full border border-gray-600/50 bg-gray-800/40">
+                                                Changed: -
+                                            </span>
+                                        )}
+                                    </div>
+                                </>
+                            ) : (
+                                <p className="text-gray-400 text-xs">Nepal's price data unavailable</p>
+                            )}
+                        </div>
+                        <Coins className={`w-10 h-10 ${isGold ? 'text-yellow-400' : 'text-gray-300'} opacity-70`} />
+                    </div>
+                </div>
+
                 {/* Current Price Card at Top */}
                 {currentPrice ? (
                     <div className={`mb-4 rounded-lg p-4 shadow-lg relative overflow-hidden ${
@@ -405,7 +488,7 @@ function App() {
                                 <p className={`${
                                     isGold ? 'text-amber-800' : 'text-slate-600'
                                 } text-xs mb-2 font-semibold`}>
-                                    Current {metalName} Price
+                                    Live {metalName} Price on USA
                                 </p>
                                 <div className="flex items-baseline gap-2">
                                     <p className={`${
@@ -413,16 +496,24 @@ function App() {
                                     } text-2xl md:text-3xl font-bold drop-shadow-md`}>
                                         {formatRS(viewMode === 'tola' ? currentPrice.price_per_tola : currentPrice.price_per_10_gram)}
                                     </p>
-                                    {currentPrice.percentChange !== 0 && (
-                                        <span className={`text-sm font-semibold drop-shadow ${
-                                            currentPrice.percentChange > 0
+                                    <span className={`text-sm font-semibold drop-shadow ${
+                                        !hasPreviousPrice || currentPercentChange === 0
+                                            ? 'text-slate-700'
+                                            : currentPercentChange > 0
                                                 ? 'text-green-700'
                                                 : 'text-red-700'
-                                        }`}>
-                                            {currentPrice.percentChange > 0 ? '↑' : '↓'}
-                                            {Math.abs(currentPrice.percentChange).toFixed(2)}% ({formatRS(priceDifferenceValue)})
-                                        </span>
-                                    )}
+                                    }`}>
+                                        {!hasPreviousPrice
+                                            ? '—'
+                                            : currentPercentChange > 0
+                                                ? '↑'
+                                                : currentPercentChange < 0
+                                                    ? '↓'
+                                                    : '→'}
+                                        {hasPreviousPrice
+                                            ? `${Math.abs(currentPercentChange).toFixed(2)}% (${formatRS(priceDifferenceValue)})`
+                                            : 'N/A'}
+                                    </span>
                                 </div>
                                 <p className={`${
                                     isGold ? 'text-amber-800' : 'text-slate-600'
