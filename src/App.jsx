@@ -502,7 +502,7 @@ function App() {
                                 <p className={`${
                                     isGold ? 'text-amber-800' : 'text-slate-600'
                                 } text-xs mb-2 font-semibold`}>
-                                    Live {metalName} Price on USA
+                                    Live {metalName} Price - USA
                                 </p>
                                 <div className="flex items-baseline gap-2">
                                     <p className={`${
