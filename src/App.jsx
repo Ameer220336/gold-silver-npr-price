@@ -123,7 +123,7 @@ function App() {
     const [lastUpdated, setLastUpdated] = useState(null);
     const [error, setError] = useState(null);
     const [usdToNpr, setUsdToNpr] = useState(null);
-    const [viewMode, setViewMode] = useState('tola'); // 'tola' or 'gms'
+    const [viewMode, setViewMode] = useState('tola'); // 'tola' or 'gms' (10 gram)
     const [exchangeRateNextUpdate, setExchangeRateNextUpdate] = useState(null);
 
     // ========================================================================
@@ -207,18 +207,19 @@ function App() {
                     const priceUSD = parseFloat(item.price);
                     const pricePerTola = calculatePricePerTola(priceUSD, USD_TO_NPR, metal);
                     const pricePerGram = calculatePricePerGram(priceUSD, USD_TO_NPR, metal);
+                    const pricePer10Gram = Math.round(pricePerGram * 10);
                     
                     return {
                         day: item.date, 
                         price_usd: priceUSD,
                         price_per_tola: pricePerTola,
-                        price_per_gram: pricePerGram,
+                        price_per_10_gram: pricePer10Gram,
                     };
                 })
                 .filter(item => 
                     !isNaN(item.price_usd) && item.price_usd > 0 &&
                     !isNaN(item.price_per_tola) && item.price_per_tola > 0 &&
-                    !isNaN(item.price_per_gram) && item.price_per_gram > 0
+                    !isNaN(item.price_per_10_gram) && item.price_per_10_gram > 0
                 )
                 .sort((a, b) => new Date(a.day) - new Date(b.day));
 
@@ -358,7 +359,7 @@ function App() {
         series: [
             {
                 name: `${metal === 'XAU' ? 'Gold' : 'Silver'} Price`,
-                data: chartData.map((item) => viewMode === 'tola' ? item.price_per_tola : item.price_per_gram),
+                data: chartData.map((item) => viewMode === 'tola' ? item.price_per_tola : item.price_per_10_gram),
                 color: metal === 'XAU' ? "#fbbf24" : "#cbd5e1",
                 marker: {
                     fillColor: metal === 'XAU' ? "#fbbf24" : "#cbd5e1",
@@ -382,7 +383,7 @@ function App() {
         // Get current price from last item in historical data
         const currentPrice = chartData.length > 0 ? chartData[chartData.length - 1] : null;
         const previousPrice = chartData.length > 1 ? chartData[chartData.length - 2] : null;
-        const currentUnitKey = viewMode === 'tola' ? 'price_per_tola' : 'price_per_gram';
+        const currentUnitKey = viewMode === 'tola' ? 'price_per_tola' : 'price_per_10_gram';
         const priceDifferenceValue = currentPrice && previousPrice
             ? Math.abs(currentPrice[currentUnitKey] - previousPrice[currentUnitKey])
             : 0;
@@ -410,7 +411,7 @@ function App() {
                                     <p className={`${
                                         isGold ? 'text-amber-950' : 'text-slate-900'
                                     } text-2xl md:text-3xl font-bold drop-shadow-md`}>
-                                        {formatRS(viewMode === 'tola' ? currentPrice.price_per_tola : currentPrice.price_per_gram)}
+                                        {formatRS(viewMode === 'tola' ? currentPrice.price_per_tola : currentPrice.price_per_10_gram)}
                                     </p>
                                     {currentPrice.percentChange !== 0 && (
                                         <span className={`text-sm font-semibold drop-shadow ${
@@ -426,7 +427,7 @@ function App() {
                                 <p className={`${
                                     isGold ? 'text-amber-800' : 'text-slate-600'
                                 } text-xs mt-1 font-semibold`}>
-                                    per {viewMode === 'tola' ? 'Tola' : 'Gram'}
+                                    per {viewMode === 'tola' ? 'Tola' : '10 Gram'}
                                 </p>
                             </div>
                             <Coins className={`w-12 h-12 ${
@@ -471,7 +472,7 @@ function App() {
                                                 <th className="w-[5%] px-1.5 sm:px-2 py-2 text-gray-300 font-semibold text-[10px] sm:text-xs">#</th>
                                                 <th className="w-[32%] px-1.5 sm:px-2 py-2 text-gray-300 font-semibold text-[10px] sm:text-xs">Date</th>
                                                 <th className="w-[18%] px-1.5 sm:px-2 py-2 text-gray-300 font-semibold text-right text-[10px] sm:text-xs">USD/oz</th>
-                                                <th className="w-[28%] px-1.5 sm:px-2 py-2 text-gray-300 font-semibold text-right text-[10px] sm:text-xs">RS/{viewMode === 'tola' ? 'Tola' : 'Gram'}</th>
+                                                <th className="w-[28%] px-1.5 sm:px-2 py-2 text-gray-300 font-semibold text-right text-[10px] sm:text-xs">RS/{viewMode === 'tola' ? 'Tola' : '10 Gram'}</th>
                                                 <th className="w-[17%] px-1.5 sm:px-2 py-2 text-gray-300 font-semibold text-right text-[10px] sm:text-xs">Change</th>
                                             </tr>
                                         </thead>
@@ -487,7 +488,7 @@ function App() {
                                                         ${item.price_usd.toFixed(2)}
                                                     </td>
                                                     <td className={`px-1.5 sm:px-2 py-2 text-right font-semibold text-[12px] sm:text-xs whitespace-nowrap ${isGold ? 'text-yellow-400' : 'text-gray-400'}`}>
-                                                        {formatRS(viewMode === 'tola' ? item.price_per_tola : item.price_per_gram)}
+                                                        {formatRS(viewMode === 'tola' ? item.price_per_tola : item.price_per_10_gram)}
                                                     </td>
                                                     <td className={`px-1.5 sm:px-2 py-2 text-right font-semibold text-[11px] sm:text-xs whitespace-nowrap ${
                                                         !item.percentChange || isNaN(item.percentChange) || item.percentChange === 0 ? 'text-gray-500' :
