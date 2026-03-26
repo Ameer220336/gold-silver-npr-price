@@ -317,7 +317,7 @@ function App() {
             height: 300,
         },
         title: {
-            text: `${metal === 'XAU' ? 'Gold' : 'Silver'} Price per ${viewMode === 'tola' ? 'Tola' : 'Gram'} (RS)`,
+            text: `${metal === 'XAU' ? 'Gold' : 'Silver'} Price per ${viewMode === 'tola' ? 'Tola' : '10 Gram'} (RS)`,
             style: {
                 color: "#f9fafb",
                 fontSize: "18px",
@@ -406,9 +406,20 @@ function App() {
         const metalName = isGold ? 'Gold' : 'Silver';
         const fenegosidaKey = isGold ? 'gold' : 'silver';
         const fenegosidaRate = fenegosidaData?.[fenegosidaKey] || null;
+        const fenegosidaLatestPrice = Number(fenegosidaRate?.latest_price);
         const fenegosidaDiffRaw = fenegosidaRate?.difference;
         const fenegosidaDiff = fenegosidaDiffRaw !== null && fenegosidaDiffRaw !== undefined
             ? Number(fenegosidaDiffRaw)
+            : null;
+        const fenegosidaPriceDisplay = Number.isFinite(fenegosidaLatestPrice)
+            ? (viewMode === 'tola'
+                ? Math.round(fenegosidaLatestPrice)
+                : Math.round((fenegosidaLatestPrice / GM_TO_TOLA) * 10))
+            : null;
+        const fenegosidaDiffDisplay = Number.isFinite(fenegosidaDiff)
+            ? (viewMode === 'tola'
+                ? Math.round(Math.abs(fenegosidaDiff))
+                : Math.round((Math.abs(fenegosidaDiff) / GM_TO_TOLA) * 10))
             : null;
         const hasFenegosidaDiff = Number.isFinite(fenegosidaDiff);
         
@@ -439,10 +450,13 @@ function App() {
                             </p>
                             {loadingFenegosida ? (
                                 <p className="text-gray-400 text-xs">Loading latest Nepal's price...</p>
-                            ) : fenegosidaRate?.latest_price ? (
+                            ) : Number.isFinite(fenegosidaPriceDisplay) ? (
                                 <>
                                     <p className={`text-2xl md:text-3xl font-bold tracking-tight ${isGold ? 'text-yellow-200' : 'text-gray-100'}`}>
-                                        {formatRS(fenegosidaRate.latest_price)}
+                                        {formatRS(fenegosidaPriceDisplay)}
+                                    </p>
+                                    <p className={`text-xs mt-1 font-semibold ${isGold ? 'text-yellow-300/90' : 'text-gray-300'}`}>
+                                        Per {viewMode === 'tola' ? 'Tola' : '10 Gram'}
                                     </p>
                                     <div className="flex flex-wrap items-center gap-2 mt-1">
                                         <p className="text-xs text-gray-400 font-medium">
@@ -456,7 +470,7 @@ function App() {
                                                         ? 'text-red-300 border-red-500/40 bg-red-900/20'
                                                         : 'text-gray-300 border-gray-500/40 bg-gray-800/40'
                                             }`}>
-                                                {fenegosidaDiff > 0 ? '↑' : fenegosidaDiff < 0 ? '↓' : '→'} Changed: {formatRS(Math.abs(fenegosidaDiff))}
+                                                {fenegosidaDiff > 0 ? '↑' : fenegosidaDiff < 0 ? '↓' : '→'} Changed: {formatRS(fenegosidaDiffDisplay)}
                                             </span>
                                         ) : (
                                             <span className="text-xs text-gray-400 px-2 py-0.5 rounded-full border border-gray-600/50 bg-gray-800/40">
