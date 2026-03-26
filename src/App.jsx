@@ -381,6 +381,11 @@ function App() {
         
         // Get current price from last item in historical data
         const currentPrice = chartData.length > 0 ? chartData[chartData.length - 1] : null;
+        const previousPrice = chartData.length > 1 ? chartData[chartData.length - 2] : null;
+        const currentUnitKey = viewMode === 'tola' ? 'price_per_tola' : 'price_per_gram';
+        const priceDifferenceValue = currentPrice && previousPrice
+            ? Math.abs(currentPrice[currentUnitKey] - previousPrice[currentUnitKey])
+            : 0;
 
         return (
             <div className="flex-1 min-w-[300px]">
@@ -414,7 +419,7 @@ function App() {
                                                 : 'text-red-700'
                                         }`}>
                                             {currentPrice.percentChange > 0 ? '↑' : '↓'}
-                                            {Math.abs(currentPrice.percentChange).toFixed(2)}%
+                                            {Math.abs(currentPrice.percentChange).toFixed(2)}% ({formatRS(priceDifferenceValue)})
                                         </span>
                                     )}
                                 </div>
