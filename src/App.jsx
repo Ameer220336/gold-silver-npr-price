@@ -767,8 +767,8 @@ function App() {
                                 <span>💰</span> Pricing Margins
                             </h3>
                             <div className="space-y-1 text-gray-400 text-xs">
-                                <p>• Gold: <span className="text-gray-200 font-medium">10% (TAX) + Rs. 5,000/tola (Bank Margin)</span></p>
-                                <p>• Silver: <span className="text-gray-200 font-medium">16% (TAX) + Rs. 50/tola (Bank Margin)</span></p>
+                                <p>• Gold: <span className="text-gray-200 font-medium">20% (TAX) + Rs. 5,000/tola (Bank Margin)</span></p>
+                                <p>• Silver: <span className="text-gray-200 font-medium">20% (TAX) + Rs. 50/tola (Bank Margin)</span></p>
                             </div>
                         </div>
                     </div>
@@ -784,10 +784,10 @@ function App() {
                                 <p className="text-yellow-400 font-semibold mb-2">Gold (per Tola)</p>
                                 <div className="text-gray-300 space-y-1">
                                     <p className="font-mono text-[10px] sm:text-xs">
-                                        = [(USD/oz ÷ {OZ_TO_GM}) × USD-to-NPR × {GM_TO_TOLA}] × 1.10 + 5,000
+                                        = [(USD/oz ÷ {OZ_TO_GM}) × USD-to-NPR × {GM_TO_TOLA}] × 1.20 + 5,000
                                     </p>
                                     <p className="text-gray-500 text-[9px] sm:text-[10px] mt-1">
-                                        (Base price × 10% TAX + Rs. 5,000 Bank Margin)
+                                        (Base price × 20% TAX + Rs. 5,000 Bank Margin)
                                     </p>
                                 </div>
                             </div>
@@ -797,10 +797,10 @@ function App() {
                                 <p className="text-slate-400 font-semibold mb-2">Silver (per Tola)</p>
                                 <div className="text-gray-300 space-y-1">
                                     <p className="font-mono text-[10px] sm:text-xs">
-                                        = [(USD/oz ÷ {OZ_TO_GM}) × USD-to-NPR × {GM_TO_TOLA}] × 1.16 + 50
+                                        = [(USD/oz ÷ {OZ_TO_GM}) × USD-to-NPR × {GM_TO_TOLA}] × 1.20 + 50
                                     </p>
                                     <p className="text-gray-500 text-[9px] sm:text-[10px] mt-1">
-                                        (Base price × 16% TAX + Rs. 50 Bank Margin)
+                                        (Base price × 20% TAX + Rs. 50 Bank Margin)
                                     </p>
                                 </div>
                             </div>
