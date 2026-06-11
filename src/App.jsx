@@ -93,10 +93,10 @@ const calculatePricePerGram = (maxPriceUSD, usdToNprRate, metal) => {
     
     if (metal === 'XAU') {
         // Gold: 10% margin + Rs. 5000/11.664 per gram
-        return Math.round(pricePerGmNPR * 1.10 + (5000 / GM_TO_TOLA));
+        return Math.round(pricePerGmNPR * 1.20 + (5000 / GM_TO_TOLA));
     } else {
         // Silver: 16% margin + Rs. 50/11.664 per gram
-        return Math.round(pricePerGmNPR * 1.16 + (50 / GM_TO_TOLA));
+        return Math.round(pricePerGmNPR * 1.20 + (50 / GM_TO_TOLA));
     }
 };
 
