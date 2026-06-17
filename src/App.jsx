@@ -93,10 +93,10 @@ const calculatePricePerGram = (maxPriceUSD, usdToNprRate, metal) => {
     
     if (metal === 'XAU') {
         // Gold: 10% margin + Rs. 1/11.664 per gram
-        return Math.round(pricePerGmNPR * 1.20 + (1 / GM_TO_TOLA));
+        return Math.round(pricePerGmNPR * 1.205 + (1 / GM_TO_TOLA));
     } else {
-        // Silver: 16% margin + Rs. 50/11.664 per gram
-        return Math.round(pricePerGmNPR * 1.20 + (1 / GM_TO_TOLA));
+        // Silver: 16% margin + Rs. 1/11.664 per gram
+        return Math.round(pricePerGmNPR * 1.205 + (1 / GM_TO_TOLA));
     }
 };
 
@@ -767,8 +767,8 @@ function App() {
                                 <span>💰</span> Pricing Margins
                             </h3>
                             <div className="space-y-1 text-gray-400 text-xs">
-                                <p>• Gold: <span className="text-gray-200 font-medium">20% (TAX) </span></p>
-                                <p>• Silver: <span className="text-gray-200 font-medium">20% (TAX)</span></p>
+                                <p>• Gold: <span className="text-gray-200 font-medium">20% (TAX) + 0.5% (SKILL TAX)</span></p>
+                                <p>• Silver: <span className="text-gray-200 font-medium">20% (TAX) + 0.5% (SKILL TAX)</span></p>
                             </div>
                         </div>
                     </div>
@@ -784,10 +784,10 @@ function App() {
                                 <p className="text-yellow-400 font-semibold mb-2">Gold (per Tola)</p>
                                 <div className="text-gray-300 space-y-1">
                                     <p className="font-mono text-[10px] sm:text-xs">
-                                        = [(USD/oz ÷ {OZ_TO_GM}) × USD-to-NPR × {GM_TO_TOLA}] × 1.20 
+                                        = [(USD/oz ÷ {OZ_TO_GM}) × USD-to-NPR × {GM_TO_TOLA}] × 1.205 
                                     </p>
                                     <p className="text-gray-500 text-[9px] sm:text-[10px] mt-1">
-                                        (Base price × 20% TAX)
+                                        (Base price × (20% TAX + 0.5% SKILL TAX))
                                     </p>
                                 </div>
                             </div>
@@ -797,10 +797,10 @@ function App() {
                                 <p className="text-slate-400 font-semibold mb-2">Silver (per Tola)</p>
                                 <div className="text-gray-300 space-y-1">
                                     <p className="font-mono text-[10px] sm:text-xs">
-                                        = [(USD/oz ÷ {OZ_TO_GM}) × USD-to-NPR × {GM_TO_TOLA}] × 1.20 
+                                        = [(USD/oz ÷ {OZ_TO_GM}) × USD-to-NPR × {GM_TO_TOLA}] × 1.205 
                                     </p>
                                     <p className="text-gray-500 text-[9px] sm:text-[10px] mt-1">
-                                        (Base price × 20% TAX)
+                                        (Base price × (20% TAX + 0.5% SKILL TAX))
                                     </p>
                                 </div>
                             </div>
